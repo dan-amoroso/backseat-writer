@@ -2,19 +2,20 @@
   import Editor from "$lib/Editor.svelte";
   import CommentBubble from "$lib/CommentBubble.svelte";
   import Sidebar from "$lib/Sidebar.svelte";
+  import SettingsModal from "$lib/SettingsModal.svelte";
+  import DebugWidget from "$lib/DebugWidget.svelte";
   import { comments } from "$lib/comments";
   import type { Writable } from "svelte/store";
   import { get } from "svelte/store";
-  import { settings, setApiKey, setSetting } from "$lib/storage";
-  import { validateKey, chatCompletion } from "$lib/perplexity";
-  import posthog from "posthog-js";
+  import { settings, setSetting } from "$lib/storage";
+  import { chatCompletion } from "$lib/perplexity";
+  import { chatCompletion as openAIChatCompletion } from "$lib/openai";
 
   const writingTypes = ["Blog Post", "Essay"];
   let selectedWritingType = writingTypes[0];
 
   let editorStateJson: Writable<string>;
   let settingsOpen = false;
-  let debugOpen = false;
 
   let feedbackOpen = false;
   let feedbackLoading = false;
@@ -44,9 +45,25 @@
 
   async function getFeedback() {
     const current = get(settings);
-    const apiKey = current.apiKeys?.["Perplexity"];
-    if (!apiKey) {
-      feedbackError = "Please configure your Perplexity API key in Settings.";
+    const verifiedKeys = current.verifiedKeys || {};
+    const openAIKey = verifiedKeys["OpenAI"]
+      ? current.apiKeys?.["OpenAI"]
+      : undefined;
+    const perplexityKey = verifiedKeys["Perplexity"]
+      ? current.apiKeys?.["Perplexity"]
+      : undefined;
+    const provider = openAIKey ? "OpenAI" : perplexityKey ? "Perplexity" : null;
+    const key = openAIKey || perplexityKey;
+    if (!key) {
+      const hasOpenAIKey = !!current.apiKeys?.["OpenAI"];
+      const hasPerplexityKey = !!current.apiKeys?.["Perplexity"];
+      if (hasOpenAIKey || hasPerplexityKey) {
+        feedbackError =
+          "One or more API keys are configured but not validated. Please go to Settings and validate your keys.";
+      } else {
+        feedbackError =
+          "Please configure an OpenAI or Perplexity API key in Settings.";
+      }
       feedbackResponse = "";
       hasFeedback = true;
       feedbackOpen = true;
@@ -80,15 +97,28 @@
     feedbackError = "";
 
     try {
-      const result = await chatCompletion(apiKey, {
-        model: "sonar",
-        messages: [
-          {
-            role: "user",
-            content: `Comment on the following text, it should be a ${selectedWritingType}:\n\n${editorText}`,
-          },
-        ],
-      });
+      let result;
+      if (provider === "OpenAI") {
+        result = await openAIChatCompletion(key, {
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "user",
+              content: `Comment on the following text, it should be a ${selectedWritingType}:\n\n${editorText}`,
+            },
+          ],
+        });
+      } else {
+        result = await chatCompletion(key, {
+          model: "sonar",
+          messages: [
+            {
+              role: "user",
+              content: `Comment on the following text, it should be a ${selectedWritingType}:\n\n${editorText}`,
+            },
+          ],
+        });
+      }
       feedbackResponse =
         result.choices?.[0]?.message?.content || "No response received.";
     } catch (err) {
@@ -99,106 +129,13 @@
     }
   }
 
-  const apiKeyProviders: {
-    name: string;
-    placeholder: string;
-    canValidate: boolean;
-  }[] = [
-    { name: "Perplexity", placeholder: "pplx-...", canValidate: true },
-    { name: "Anthropic", placeholder: "sk-ant-...", canValidate: false },
-    { name: "Mistral", placeholder: "mk-...", canValidate: false },
-    { name: "Zen", placeholder: "zen-...", canValidate: false },
-    { name: "Gemini", placeholder: "AIza...", canValidate: false },
-  ];
-  let apiKeys: Record<string, string> = {};
-  let keyVisibility: Record<string, boolean> = {};
-  let keyStatus: Record<string, "idle" | "validating" | "valid" | "invalid"> =
-    {};
-  let keyError: Record<string, string> = {};
-  let keyValidationTimers: Record<string, ReturnType<typeof setTimeout>> = {};
-
-  function onApiKeyInput(provider: string, event: Event) {
-    const input = event.target as HTMLInputElement;
-    const value = input.value;
-    setApiKey(provider, value);
-
-    const providerDef = apiKeyProviders.find((p) => p.name === provider);
-    if (!providerDef?.canValidate) return;
-
-    clearTimeout(keyValidationTimers[provider]);
-    keyError[provider] = "";
-
-    if (!value.trim()) {
-      keyStatus[provider] = "idle";
-      return;
-    }
-
-    keyStatus[provider] = "validating";
-    keyValidationTimers[provider] = setTimeout(async () => {
-      const result = await validateKey(value);
-      // Only update if the key hasn't changed while we were validating
-      if (apiKeys[provider] === value) {
-        if (result.valid) {
-          keyStatus[provider] = "valid";
-          keyError[provider] = "";
-          posthog?.capture?.("api_key_configured", { provider });
-        } else {
-          keyStatus[provider] = "invalid";
-          keyError[provider] = result.error;
-        }
-      }
-    }, 800);
-  }
-
-  async function validateKeyNow(provider: string) {
-    const current = get(settings);
-    const value = current.apiKeys?.[provider] || "";
-    clearTimeout(keyValidationTimers[provider]);
-    keyError[provider] = "";
-
-    if (!value.trim()) {
-      keyStatus[provider] = "idle";
-      return;
-    }
-
-    keyStatus[provider] = "validating";
-    const result = await validateKey(value);
-    if (apiKeys[provider] === value) {
-      if (result.valid) {
-        keyStatus[provider] = "valid";
-        keyError[provider] = "";
-        posthog?.capture?.("api_key_configured", { provider });
-      } else {
-        keyStatus[provider] = "invalid";
-        keyError[provider] = result.error;
-      }
-    }
-  }
-
-  function toggleKeyVisibility(provider: string) {
-    keyVisibility[provider] = !keyVisibility[provider];
-  }
-
   function onWritingTypeChange(event: Event) {
     const select = event.target as HTMLSelectElement;
     setSetting("writingType", select.value);
   }
 
-  function onSettingsBackdropClick(event: MouseEvent) {
-    if (event.target === event.currentTarget) {
-      settingsOpen = false;
-    }
-  }
-
-  function onSettingsKeydown(event: KeyboardEvent) {
-    if (event.key === "Escape") {
-      settingsOpen = false;
-    }
-  }
-
   $: if ($settings) {
     selectedWritingType = $settings.writingType || writingTypes[0];
-    apiKeys = $settings.apiKeys || {};
   }
 </script>
 
@@ -374,7 +311,7 @@
                   stroke-linecap="round"
                 />
               </svg>
-              Asking Perplexity...
+              Asking AI...
             </div>
           {:else if feedbackError}
             <div class="feedback-error">{feedbackError}</div>
@@ -388,200 +325,7 @@
 {/if}
 
 {#if settingsOpen}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div
-    class="settings-backdrop"
-    on:click={onSettingsBackdropClick}
-    on:keydown={onSettingsKeydown}
-  >
-    <div class="settings-modal" role="dialog" aria-label="Settings">
-      <div class="settings-header">
-        <div class="settings-header-left">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="settings-header-icon"
-          >
-            <path
-              d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-            />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          <h2>Settings</h2>
-        </div>
-        <button
-          class="settings-close"
-          on:click={() => (settingsOpen = false)}
-          aria-label="Close"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-          >
-            <path d="M1 1l12 12M13 1L1 13" />
-          </svg>
-        </button>
-      </div>
-
-      <div class="settings-body">
-        <div class="settings-section">
-          <h3 class="settings-section-title">
-            <span class="section-title-bar"></span>
-            API Keys
-          </h3>
-          <p class="settings-section-desc">
-            Keys are stored locally in your browser and never sent to our
-            servers.
-          </p>
-          {#each apiKeyProviders as provider}
-            <div class="api-key-row">
-              <div class="api-key-header">
-                <span class="api-key-name">{provider.name}</span>
-                <span
-                  class="api-key-status"
-                  class:api-key-set={apiKeys[provider.name]}
-                >
-                  {apiKeys[provider.name] ? "configured" : "not set"}
-                </span>
-              </div>
-              <div class="api-key-input-row">
-                <div class="api-key-input-wrap">
-                  <input
-                    type={keyVisibility[provider.name] ? "text" : "password"}
-                    class="api-key-input"
-                    placeholder={provider.placeholder}
-                    value={apiKeys[provider.name] || ""}
-                    on:input={(e) => onApiKeyInput(provider.name, e)}
-                    spellcheck="false"
-                    autocomplete="off"
-                  />
-                  <button
-                    class="api-key-toggle"
-                    on:click={() => toggleKeyVisibility(provider.name)}
-                    aria-label={keyVisibility[provider.name]
-                      ? "Hide key"
-                      : "Show key"}
-                    tabindex="-1"
-                  >
-                    {#if keyVisibility[provider.name]}
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <path
-                          d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
-                        />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    {:else}
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <path
-                          d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"
-                        />
-                        <line x1="1" y1="1" x2="23" y2="23" />
-                      </svg>
-                    {/if}
-                  </button>
-                </div>
-                <button
-                  class="api-key-validate"
-                  on:click={() => validateKeyNow(provider.name)}
-                  disabled={!apiKeys[provider.name] ||
-                    keyStatus[provider.name] === "validating"}
-                  type="button"
-                >
-                  Validate
-                </button>
-                {#if keyStatus[provider.name] === "validating"}
-                  <div class="api-key-validation-icon">
-                    <svg
-                      class="api-key-spinner"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                    >
-                      <circle
-                        cx="8"
-                        cy="8"
-                        r="6"
-                        stroke="rgba(255,255,255,0.08)"
-                        stroke-width="2"
-                      />
-                      <path
-                        d="M14 8a6 6 0 0 0-6-6"
-                        stroke="#569cd6"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                      />
-                    </svg>
-                  </div>
-                {:else if keyStatus[provider.name] === "valid"}
-                  <div class="api-key-validation-icon api-key-validation-valid">
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="#4ec9b0"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <path d="M3.5 8.5L6.5 11.5L12.5 4.5" />
-                    </svg>
-                  </div>
-                {:else if keyStatus[provider.name] === "invalid"}
-                  <div
-                    class="api-key-validation-icon api-key-validation-invalid"
-                    title={keyError[provider.name] || "Invalid key"}
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="#a83232"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                    >
-                      <path d="M4 4l8 8M12 4l-8 8" />
-                    </svg>
-                  </div>
-                {/if}
-              </div>
-            </div>
-          {/each}
-        </div>
-      </div>
-    </div>
-  </div>
+  <SettingsModal on:close={() => (settingsOpen = false)} />
 {/if}
 
 <style>

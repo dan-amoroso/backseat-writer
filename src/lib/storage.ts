@@ -41,11 +41,13 @@ export function createPersistentStore<T>(
 export type Settings = {
   writingType: string;
   apiKeys: Record<string, string>;
+  verifiedKeys: Record<string, boolean>;
 };
 
 const defaultSettings: Settings = {
   writingType: "Blog Post",
   apiKeys: {},
+  verifiedKeys: {},
 };
 
 export const settings = createPersistentStore<Settings>(
@@ -64,5 +66,12 @@ export function setApiKey(provider: string, value: string): void {
   settings.update((current) => ({
     ...current,
     apiKeys: { ...current.apiKeys, [provider]: value },
+  }));
+}
+
+export function setVerifiedKey(provider: string, verified: boolean): void {
+  settings.update((current) => ({
+    ...current,
+    verifiedKeys: { ...current.verifiedKeys, [provider]: verified },
   }));
 }
