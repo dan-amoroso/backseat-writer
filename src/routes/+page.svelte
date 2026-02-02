@@ -1,146 +1,1250 @@
 <script lang="ts">
-	import Editor from '$lib/Editor.svelte';
-	import CommentBubble from '$lib/CommentBubble.svelte';
-	import { comments } from '$lib/comments';
-	import vscodeTheme from '$lib/themes/vscode';
-	import intellijTheme from '$lib/themes/intellij';
-	import type { EditorTheme } from '$lib/themes/types';
-	import type { Writable } from 'svelte/store';
+  import Editor from "$lib/Editor.svelte";
+  import CommentBubble from "$lib/CommentBubble.svelte";
+  import Sidebar from "$lib/Sidebar.svelte";
+  import { comments } from "$lib/comments";
+  import type { Writable } from "svelte/store";
+  import { get } from "svelte/store";
+  import { settings, setApiKey, setSetting } from "$lib/storage";
+  import { validateKey, chatCompletion } from "$lib/perplexity";
+  import posthog from "posthog-js";
 
-	const themes: EditorTheme[] = [vscodeTheme, intellijTheme];
-	let selectedTheme = themes[0];
+  const writingTypes = ["Blog Post", "Essay"];
+  let selectedWritingType = writingTypes[0];
 
-	const writingTypes = ['Blog Post', 'Essay'];
-	let selectedWritingType = writingTypes[0];
+  let editorStateJson: Writable<string>;
+  let settingsOpen = false;
+  let debugOpen = false;
 
-	let editorStateJson: Writable<string>;
+  let feedbackOpen = false;
+  let feedbackLoading = false;
+  let feedbackResponse = "";
+  let feedbackError = "";
+  let hasFeedback = false;
 
-	function onThemeChange(event: Event) {
-		const select = event.target as HTMLSelectElement;
-		selectedTheme = themes[select.selectedIndex];
-	}
+  function extractTextFromNodes(nodes: any[]): string {
+    let text = "";
+    for (const node of nodes) {
+      if (node.text) {
+        text += node.text;
+      }
+      if (node.children) {
+        text += extractTextFromNodes(node.children);
+      }
+      if (
+        node.type === "paragraph" ||
+        node.type === "heading" ||
+        node.type === "quote"
+      ) {
+        text += "\n";
+      }
+    }
+    return text;
+  }
+
+  async function getFeedback() {
+    const current = get(settings);
+    const apiKey = current.apiKeys?.["Perplexity"];
+    if (!apiKey) {
+      feedbackError = "Please configure your Perplexity API key in Settings.";
+      feedbackResponse = "";
+      hasFeedback = true;
+      feedbackOpen = true;
+      return;
+    }
+
+    let editorText = "";
+    try {
+      const state = JSON.parse(get(editorStateJson));
+      editorText = extractTextFromNodes(state.root?.children || []).trim();
+    } catch {
+      feedbackError = "Could not read editor content.";
+      feedbackResponse = "";
+      hasFeedback = true;
+      feedbackOpen = true;
+      return;
+    }
+
+    if (!editorText) {
+      feedbackError = "The editor is empty. Write something first.";
+      feedbackResponse = "";
+      hasFeedback = true;
+      feedbackOpen = true;
+      return;
+    }
+
+    feedbackLoading = true;
+    feedbackOpen = true;
+    hasFeedback = true;
+    feedbackResponse = "";
+    feedbackError = "";
+
+    try {
+      const result = await chatCompletion(apiKey, {
+        model: "sonar",
+        messages: [
+          {
+            role: "user",
+            content: `Comment on the following text, it should be a ${selectedWritingType}:\n\n${editorText}`,
+          },
+        ],
+      });
+      feedbackResponse =
+        result.choices?.[0]?.message?.content || "No response received.";
+    } catch (err) {
+      feedbackError =
+        err instanceof Error ? err.message : "Failed to get feedback.";
+    } finally {
+      feedbackLoading = false;
+    }
+  }
+
+  const apiKeyProviders: {
+    name: string;
+    placeholder: string;
+    canValidate: boolean;
+  }[] = [
+    { name: "Perplexity", placeholder: "pplx-...", canValidate: true },
+    { name: "Anthropic", placeholder: "sk-ant-...", canValidate: false },
+    { name: "Mistral", placeholder: "mk-...", canValidate: false },
+    { name: "Zen", placeholder: "zen-...", canValidate: false },
+    { name: "Gemini", placeholder: "AIza...", canValidate: false },
+  ];
+  let apiKeys: Record<string, string> = {};
+  let keyVisibility: Record<string, boolean> = {};
+  let keyStatus: Record<string, "idle" | "validating" | "valid" | "invalid"> =
+    {};
+  let keyError: Record<string, string> = {};
+  let keyValidationTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+  function onApiKeyInput(provider: string, event: Event) {
+    const input = event.target as HTMLInputElement;
+    const value = input.value;
+    setApiKey(provider, value);
+
+    const providerDef = apiKeyProviders.find((p) => p.name === provider);
+    if (!providerDef?.canValidate) return;
+
+    clearTimeout(keyValidationTimers[provider]);
+    keyError[provider] = "";
+
+    if (!value.trim()) {
+      keyStatus[provider] = "idle";
+      return;
+    }
+
+    keyStatus[provider] = "validating";
+    keyValidationTimers[provider] = setTimeout(async () => {
+      const result = await validateKey(value);
+      // Only update if the key hasn't changed while we were validating
+      if (apiKeys[provider] === value) {
+        if (result.valid) {
+          keyStatus[provider] = "valid";
+          keyError[provider] = "";
+          posthog?.capture?.("api_key_configured", { provider });
+        } else {
+          keyStatus[provider] = "invalid";
+          keyError[provider] = result.error;
+        }
+      }
+    }, 800);
+  }
+
+  async function validateKeyNow(provider: string) {
+    const current = get(settings);
+    const value = current.apiKeys?.[provider] || "";
+    clearTimeout(keyValidationTimers[provider]);
+    keyError[provider] = "";
+
+    if (!value.trim()) {
+      keyStatus[provider] = "idle";
+      return;
+    }
+
+    keyStatus[provider] = "validating";
+    const result = await validateKey(value);
+    if (apiKeys[provider] === value) {
+      if (result.valid) {
+        keyStatus[provider] = "valid";
+        keyError[provider] = "";
+        posthog?.capture?.("api_key_configured", { provider });
+      } else {
+        keyStatus[provider] = "invalid";
+        keyError[provider] = result.error;
+      }
+    }
+  }
+
+  function toggleKeyVisibility(provider: string) {
+    keyVisibility[provider] = !keyVisibility[provider];
+  }
+
+  function onWritingTypeChange(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    setSetting("writingType", select.value);
+  }
+
+  function onSettingsBackdropClick(event: MouseEvent) {
+    if (event.target === event.currentTarget) {
+      settingsOpen = false;
+    }
+  }
+
+  function onSettingsKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      settingsOpen = false;
+    }
+  }
+
+  $: if ($settings) {
+    selectedWritingType = $settings.writingType || writingTypes[0];
+    apiKeys = $settings.apiKeys || {};
+  }
 </script>
 
-<main>
-	<div class="header">
-		<h1>Backseat Writer</h1>
-		<div class="header-controls">
-			<label>
-				What are we writing?
-				<select bind:value={selectedWritingType}>
-					{#each writingTypes as wt}
-						<option>{wt}</option>
-					{/each}
-				</select>
-			</label>
-			<select on:change={onThemeChange}>
-				{#each themes as t}
-					<option>{t.name}</option>
-				{/each}
-			</select>
-		</div>
-	</div>
-	<div class="workspace">
-		<div class="editor-pane">
-			<Editor theme={selectedTheme} bind:editorStateJson />
-		</div>
-		<aside class="comments-pane">
-			{#each $comments as comment (comment.id)}
-				<CommentBubble {comment} />
-			{/each}
-		</aside>
-	</div>
-	{#if editorStateJson}
-		<details class="state-debug">
-			<summary>Editor State</summary>
-			<pre>{$editorStateJson}</pre>
-		</details>
-	{/if}
-</main>
+<div class="app-shell">
+  <Sidebar
+    settingsActive={settingsOpen}
+    on:settings={() => (settingsOpen = true)}
+  />
+  <main>
+    <div class="header">
+      <h1>Backseat Writer</h1>
+      <div class="header-controls">
+        <label>
+          What are we writing?
+          <select
+            bind:value={selectedWritingType}
+            on:change={onWritingTypeChange}
+          >
+            {#each writingTypes as wt}
+              <option>{wt}</option>
+            {/each}
+          </select>
+        </label>
+        <button
+          class="feedback-btn"
+          on:click={getFeedback}
+          disabled={feedbackLoading}
+        >
+          {#if feedbackLoading}
+            <svg
+              class="feedback-spinner"
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+            >
+              <circle
+                cx="8"
+                cy="8"
+                r="6"
+                stroke="rgba(255,255,255,0.08)"
+                stroke-width="2"
+              />
+              <path
+                d="M14 8a6 6 0 0 0-6-6"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          {/if}
+          Get Feedback
+        </button>
+      </div>
+    </div>
+    <div class="workspace">
+      <div class="editor-pane">
+        <Editor bind:editorStateJson />
+      </div>
+      <aside class="comments-pane">
+        {#each $comments as comment (comment.id)}
+          <CommentBubble {comment} />
+        {/each}
+      </aside>
+    </div>
+  </main>
+</div>
+
+{#if editorStateJson}
+  <div class="debug-widget">
+    <button
+      class="debug-toggle"
+      class:debug-toggle-active={debugOpen}
+      on:click={() => (debugOpen = !debugOpen)}
+      aria-label="Toggle editor state"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <polyline points="4 7 4 4 20 4 20 7" />
+        <line x1="9" y1="20" x2="15" y2="20" />
+        <line x1="12" y1="4" x2="12" y2="20" />
+      </svg>
+      <span class="debug-toggle-label">&lt;/&gt;</span>
+    </button>
+    {#if debugOpen}
+      <div class="debug-panel">
+        <div class="debug-panel-header">Editor State</div>
+        <pre class="debug-panel-content">{$editorStateJson}</pre>
+      </div>
+    {/if}
+  </div>
+{/if}
+
+{#if hasFeedback}
+  <div class="feedback-widget">
+    <button
+      class="feedback-toggle"
+      class:feedback-toggle-active={feedbackOpen}
+      on:click={() => (feedbackOpen = !feedbackOpen)}
+      aria-label="Toggle AI feedback"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path
+          d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+        />
+      </svg>
+      <span class="feedback-toggle-label">AI</span>
+      {#if feedbackLoading}
+        <svg
+          class="feedback-spinner"
+          width="12"
+          height="12"
+          viewBox="0 0 16 16"
+          fill="none"
+        >
+          <circle
+            cx="8"
+            cy="8"
+            r="6"
+            stroke="rgba(255,255,255,0.08)"
+            stroke-width="2"
+          />
+          <path
+            d="M14 8a6 6 0 0 0-6-6"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+      {/if}
+    </button>
+    {#if feedbackOpen}
+      <div class="feedback-panel">
+        <div class="feedback-panel-header">AI Feedback</div>
+        <div class="feedback-panel-content">
+          {#if feedbackLoading}
+            <div class="feedback-loading">
+              <svg
+                class="feedback-spinner"
+                width="20"
+                height="20"
+                viewBox="0 0 16 16"
+                fill="none"
+              >
+                <circle
+                  cx="8"
+                  cy="8"
+                  r="6"
+                  stroke="rgba(255,255,255,0.08)"
+                  stroke-width="2"
+                />
+                <path
+                  d="M14 8a6 6 0 0 0-6-6"
+                  stroke="#569cd6"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+              Asking Perplexity...
+            </div>
+          {:else if feedbackError}
+            <div class="feedback-error">{feedbackError}</div>
+          {:else}
+            <pre class="feedback-text">{feedbackResponse}</pre>
+          {/if}
+        </div>
+      </div>
+    {/if}
+  </div>
+{/if}
+
+{#if settingsOpen}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div
+    class="settings-backdrop"
+    on:click={onSettingsBackdropClick}
+    on:keydown={onSettingsKeydown}
+  >
+    <div class="settings-modal" role="dialog" aria-label="Settings">
+      <div class="settings-header">
+        <div class="settings-header-left">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="settings-header-icon"
+          >
+            <path
+              d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+            />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          <h2>Settings</h2>
+        </div>
+        <button
+          class="settings-close"
+          on:click={() => (settingsOpen = false)}
+          aria-label="Close"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          >
+            <path d="M1 1l12 12M13 1L1 13" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-body">
+        <div class="settings-section">
+          <h3 class="settings-section-title">
+            <span class="section-title-bar"></span>
+            API Keys
+          </h3>
+          <p class="settings-section-desc">
+            Keys are stored locally in your browser and never sent to our
+            servers.
+          </p>
+          {#each apiKeyProviders as provider}
+            <div class="api-key-row">
+              <div class="api-key-header">
+                <span class="api-key-name">{provider.name}</span>
+                <span
+                  class="api-key-status"
+                  class:api-key-set={apiKeys[provider.name]}
+                >
+                  {apiKeys[provider.name] ? "configured" : "not set"}
+                </span>
+              </div>
+              <div class="api-key-input-row">
+                <div class="api-key-input-wrap">
+                  <input
+                    type={keyVisibility[provider.name] ? "text" : "password"}
+                    class="api-key-input"
+                    placeholder={provider.placeholder}
+                    value={apiKeys[provider.name] || ""}
+                    on:input={(e) => onApiKeyInput(provider.name, e)}
+                    spellcheck="false"
+                    autocomplete="off"
+                  />
+                  <button
+                    class="api-key-toggle"
+                    on:click={() => toggleKeyVisibility(provider.name)}
+                    aria-label={keyVisibility[provider.name]
+                      ? "Hide key"
+                      : "Show key"}
+                    tabindex="-1"
+                  >
+                    {#if keyVisibility[provider.name]}
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path
+                          d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                        />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    {:else}
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path
+                          d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"
+                        />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
+                    {/if}
+                  </button>
+                </div>
+                <button
+                  class="api-key-validate"
+                  on:click={() => validateKeyNow(provider.name)}
+                  disabled={!apiKeys[provider.name] ||
+                    keyStatus[provider.name] === "validating"}
+                  type="button"
+                >
+                  Validate
+                </button>
+                {#if keyStatus[provider.name] === "validating"}
+                  <div class="api-key-validation-icon">
+                    <svg
+                      class="api-key-spinner"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                    >
+                      <circle
+                        cx="8"
+                        cy="8"
+                        r="6"
+                        stroke="rgba(255,255,255,0.08)"
+                        stroke-width="2"
+                      />
+                      <path
+                        d="M14 8a6 6 0 0 0-6-6"
+                        stroke="#569cd6"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                  </div>
+                {:else if keyStatus[provider.name] === "valid"}
+                  <div class="api-key-validation-icon api-key-validation-valid">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="#4ec9b0"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M3.5 8.5L6.5 11.5L12.5 4.5" />
+                    </svg>
+                  </div>
+                {:else if keyStatus[provider.name] === "invalid"}
+                  <div
+                    class="api-key-validation-icon api-key-validation-invalid"
+                    title={keyError[provider.name] || "Invalid key"}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="#a83232"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                    >
+                      <path d="M4 4l8 8M12 4l-8 8" />
+                    </svg>
+                  </div>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
-	main {
-		max-width: 1200px;
-		margin: 0 auto;
-		padding: 32px 16px;
-	}
+  /* ── App shell ── */
 
-	.header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 24px;
-	}
+  .app-shell {
+    display: flex;
+    min-height: 100vh;
+  }
 
-	h1 {
-		margin: 0;
-	}
+  main {
+    flex: 1;
+    min-width: 0;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
 
-	.header-controls {
-		display: flex;
-		align-items: center;
-		gap: 16px;
-	}
+  .header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
 
-	label {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		font-size: 14px;
-		color: #d4d4d4;
-	}
+  h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #e0e0e0;
+    letter-spacing: -0.01em;
+  }
 
-	select {
-		padding: 6px 12px;
-		border-radius: 4px;
-		border: 1px solid #3c3c3c;
-		background: #2d2d2d;
-		color: #d4d4d4;
-		font-size: 14px;
-		cursor: pointer;
-	}
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
 
-	.workspace {
-		display: flex;
-		gap: 16px;
-		align-items: flex-start;
-	}
+  label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #808080;
+  }
 
-	.editor-pane {
-		flex: 1;
-		min-width: 0;
-	}
+  select {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: #d4d4d4;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s ease-out;
+  }
 
-	.comments-pane {
-		width: 280px;
-		flex-shrink: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-	}
+  select:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+  }
 
-	.state-debug {
-		margin-top: 24px;
-		border: 1px solid #3c3c3c;
-		border-radius: 4px;
-		background: #1e1e1e;
-	}
+  select:focus {
+    outline: none;
+    border-color: rgba(86, 156, 214, 0.5);
+  }
 
-	.state-debug summary {
-		padding: 8px 12px;
-		cursor: pointer;
-		font-size: 13px;
-		color: #808080;
-		user-select: none;
-	}
+  .workspace {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
 
-	.state-debug pre {
-		margin: 0;
-		padding: 12px 16px;
-		font-size: 12px;
-		line-height: 1.5;
-		color: #d4d4d4;
-		overflow-x: auto;
-		border-top: 1px solid #3c3c3c;
-	}
+  .editor-pane {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .comments-pane {
+    width: 280px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* ── Debug widget ── */
+
+  :global(.debug-widget) {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  :global(.debug-toggle) {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(30, 30, 30, 0.9);
+    color: #4a4a4a;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", monospace;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition:
+      color 0.15s ease-out,
+      border-color 0.15s ease-out,
+      background 0.15s ease-out;
+  }
+
+  :global(.debug-toggle:hover) {
+    color: #808080;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(40, 40, 40, 0.95);
+  }
+
+  :global(.debug-toggle-active) {
+    color: #569cd6;
+    border-color: rgba(86, 156, 214, 0.3);
+  }
+
+  :global(.debug-toggle-label) {
+    line-height: 1;
+  }
+
+  :global(.debug-panel) {
+    margin-bottom: 8px;
+    width: 420px;
+    max-width: 90vw;
+    max-height: 50vh;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(28, 28, 30, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: debugIn 0.15s ease-out;
+  }
+
+  @keyframes debugIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  :global(.debug-panel-header) {
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #555;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+  }
+
+  :global(.debug-panel-content) {
+    margin: 0;
+    padding: 12px 14px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #808080;
+    overflow: auto;
+    flex: 1;
+  }
+
+  :global(.debug-panel-content::-webkit-scrollbar) {
+    width: 5px;
+  }
+
+  :global(.debug-panel-content::-webkit-scrollbar-track) {
+    background: transparent;
+  }
+
+  :global(.debug-panel-content::-webkit-scrollbar-thumb) {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+  }
+
+  /* ── Backdrop ── */
+
+  :global(.settings-backdrop) {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    animation: fadeIn 0.15s ease-out;
+  }
+
+  /* ── Modal ── */
+
+  :global(.settings-modal) {
+    background: #1c1c1e;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    width: 440px;
+    max-width: 92vw;
+    box-shadow:
+      0 24px 80px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+      0 1px 0 rgba(255, 255, 255, 0.04) inset;
+    animation: modalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes modalIn {
+    from {
+      opacity: 0;
+      transform: scale(0.97) translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  /* ── Modal header ── */
+
+  :global(.settings-header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.015);
+  }
+
+  :global(.settings-header-left) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  :global(.settings-header-icon) {
+    color: #569cd6;
+    opacity: 0.6;
+  }
+
+  :global(.settings-header h2) {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: #d4d4d4;
+    letter-spacing: 0.01em;
+  }
+
+  :global(.settings-close) {
+    background: none;
+    border: 1px solid transparent;
+    color: #555;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      color 0.15s ease-out,
+      background 0.15s ease-out;
+  }
+
+  :global(.settings-close:hover) {
+    color: #aaa;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  :global(.settings-close:focus-visible) {
+    outline: none;
+    border-color: rgba(86, 156, 214, 0.5);
+  }
+
+  /* ── Modal body ── */
+
+  :global(.settings-body) {
+    padding: 4px 0;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  :global(.settings-body::-webkit-scrollbar) {
+    width: 6px;
+  }
+
+  :global(.settings-body::-webkit-scrollbar-track) {
+    background: transparent;
+  }
+
+  :global(.settings-body::-webkit-scrollbar-thumb) {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+  }
+
+  /* ── Sections ── */
+
+  :global(.settings-section) {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 20px 16px;
+  }
+
+  :global(.settings-section + .settings-section) {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  :global(.settings-section-title) {
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #555;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  :global(.section-title-bar) {
+    width: 3px;
+    height: 10px;
+    background: #569cd6;
+    border-radius: 2px;
+    opacity: 0.5;
+  }
+
+  :global(.settings-section-desc) {
+    margin: -2px 0 6px;
+    font-size: 12px;
+    color: #484848;
+    line-height: 1.4;
+    padding-left: 11px;
+  }
+
+  /* ── API key rows ── */
+
+  :global(.api-key-row) {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    transition:
+      border-color 0.2s ease-out,
+      background 0.2s ease-out;
+  }
+
+  :global(.api-key-row:focus-within) {
+    border-color: rgba(86, 156, 214, 0.25);
+    background: rgba(86, 156, 214, 0.025);
+  }
+
+  :global(.api-key-header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  :global(.api-key-name) {
+    font-size: 13px;
+    font-weight: 500;
+    color: #b0b0b0;
+  }
+
+  :global(.api-key-status) {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #444;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    transition:
+      color 0.2s ease-out,
+      background 0.2s ease-out;
+  }
+
+  :global(.api-key-status.api-key-set) {
+    color: #4ec9b0;
+    background: rgba(78, 201, 176, 0.08);
+  }
+
+  :global(.api-key-input-row) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  :global(.api-key-validation-icon) {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :global(.api-key-spinner) {
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  :global(.api-key-input-wrap) {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: border-color 0.15s ease-out;
+  }
+
+  :global(.api-key-input-wrap:focus-within) {
+    border-color: rgba(86, 156, 214, 0.35);
+  }
+
+  :global(.api-key-input) {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 10px;
+    border: none;
+    background: transparent;
+    color: #d4d4d4;
+    font-size: 12px;
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", monospace;
+    letter-spacing: 0.02em;
+  }
+
+  :global(.api-key-input::placeholder) {
+    color: #363636;
+  }
+
+  :global(.api-key-input:focus) {
+    outline: none;
+  }
+
+  :global(.api-key-validate) {
+    background: rgba(86, 156, 214, 0.12);
+    border: 1px solid rgba(86, 156, 214, 0.3);
+    color: #9cdcfe;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition:
+      background 0.15s ease-out,
+      border-color 0.15s ease-out;
+  }
+
+  :global(.api-key-validate:hover) {
+    background: rgba(86, 156, 214, 0.2);
+    border-color: rgba(86, 156, 214, 0.45);
+  }
+
+  :global(.api-key-validate:disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.api-key-toggle) {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    color: #3e3e3e;
+    cursor: pointer;
+    padding: 7px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease-out;
+  }
+
+  :global(.api-key-toggle:hover) {
+    color: #808080;
+  }
+
+  /* ── Feedback button ── */
+
+  .feedback-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(86, 156, 214, 0.3);
+    background: rgba(86, 156, 214, 0.1);
+    color: #9cdcfe;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background 0.15s ease-out,
+      border-color 0.15s ease-out;
+  }
+
+  .feedback-btn:hover {
+    background: rgba(86, 156, 214, 0.2);
+    border-color: rgba(86, 156, 214, 0.45);
+  }
+
+  .feedback-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  :global(.feedback-spinner) {
+    animation: spin 0.7s linear infinite;
+  }
+
+  /* ── Feedback widget ── */
+
+  :global(.feedback-widget) {
+    position: fixed;
+    bottom: 16px;
+    left: 80px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  :global(.feedback-toggle) {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(30, 30, 30, 0.9);
+    color: #4a4a4a;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", monospace;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition:
+      color 0.15s ease-out,
+      border-color 0.15s ease-out,
+      background 0.15s ease-out;
+  }
+
+  :global(.feedback-toggle:hover) {
+    color: #808080;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(40, 40, 40, 0.95);
+  }
+
+  :global(.feedback-toggle-active) {
+    color: #569cd6;
+    border-color: rgba(86, 156, 214, 0.3);
+  }
+
+  :global(.feedback-toggle-label) {
+    line-height: 1;
+  }
+
+  :global(.feedback-panel) {
+    margin-bottom: 8px;
+    width: 480px;
+    max-width: 90vw;
+    max-height: 50vh;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(28, 28, 30, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: debugIn 0.15s ease-out;
+  }
+
+  :global(.feedback-panel-header) {
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #555;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+  }
+
+  :global(.feedback-panel-content) {
+    padding: 12px 14px;
+    overflow: auto;
+    flex: 1;
+  }
+
+  :global(.feedback-panel-content::-webkit-scrollbar) {
+    width: 5px;
+  }
+
+  :global(.feedback-panel-content::-webkit-scrollbar-track) {
+    background: transparent;
+  }
+
+  :global(.feedback-panel-content::-webkit-scrollbar-thumb) {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+  }
+
+  :global(.feedback-loading) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: #808080;
+  }
+
+  :global(.feedback-error) {
+    font-size: 12px;
+    color: #a83232;
+    line-height: 1.5;
+  }
+
+  :global(.feedback-text) {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #c0c0c0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
 </style>
