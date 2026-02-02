@@ -73,6 +73,12 @@ select:focus {
   min-width: 0;
 }
 
+.word-count {
+  font-size: 11px;
+  color: #4a4a4a;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", monospace;
+}
+
 .comments-pane {
   width: 280px;
   flex-shrink: 0;
@@ -508,6 +514,32 @@ select:focus {
 
 .api-key-toggle:hover {
   color: #808080;
+}
+
+/* ── Copy button ── */
+
+.copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #808080;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color 0.15s ease-out,
+    background 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+
+.copy-btn:hover {
+  color: #d4d4d4;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* ── Feedback button ── */

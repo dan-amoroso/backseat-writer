@@ -79,6 +79,33 @@
     setSetting("writingType", select.value);
   }
 
+  let copyLabel = "Copy";
+
+  async function copyToClipboard() {
+    try {
+      const state = JSON.parse(get(editorStateJson));
+      const text = extractTextFromNodes(state.root?.children || []).trim();
+      if (!text) return;
+      await navigator.clipboard.writeText(text);
+      copyLabel = "Copied!";
+      setTimeout(() => (copyLabel = "Copy"), 1500);
+    } catch {
+      // ignore
+    }
+  }
+
+  let wordCount = 0;
+
+  $: if (editorStateJson && $editorStateJson) {
+    try {
+      const state = JSON.parse($editorStateJson);
+      const text = extractTextFromNodes(state.root?.children || []).trim();
+      wordCount = text ? text.split(/\s+/).length : 0;
+    } catch {
+      wordCount = 0;
+    }
+  }
+
   $: if ($settings) {
     selectedWritingType = $settings.writingType || writingTypes[0];
   }
@@ -104,6 +131,25 @@
             {/each}
           </select>
         </label>
+        <span class="word-count"
+          >{wordCount} {wordCount === 1 ? "word" : "words"}</span
+        >
+        <button class="copy-btn" on:click={copyToClipboard}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          {copyLabel}
+        </button>
         <button
           class="feedback-btn"
           on:click={getFeedback}
