@@ -3,6 +3,7 @@
   import { settings, setApiKey, setVerifiedKey } from "$lib/storage";
   import { validateKey } from "$lib/perplexity";
   import { validateKey as validateOpenAIKey } from "$lib/openai";
+  import { validateKey as validateGeminiKey } from "$lib/gemini";
   import posthog from "posthog-js";
 
   const dispatch = createEventDispatcher<{ close: void }>();
@@ -17,7 +18,7 @@
     { name: "Anthropic", placeholder: "sk-ant-...", canValidate: false },
     { name: "Mistral", placeholder: "mk-...", canValidate: false },
     { name: "Zen", placeholder: "zen-...", canValidate: false },
-    { name: "Gemini", placeholder: "AIza...", canValidate: false },
+    { name: "Gemini", placeholder: "AIza...", canValidate: true },
   ];
 
   let apiKeys: Record<string, string> = {};
@@ -49,7 +50,9 @@
       const result =
         provider === "OpenAI"
           ? await validateOpenAIKey(value)
-          : await validateKey(value);
+          : provider === "Gemini"
+            ? await validateGeminiKey(value)
+            : await validateKey(value);
       if (apiKeys[provider] === value) {
         if (result.valid) {
           keyStatus[provider] = "valid";
@@ -80,7 +83,9 @@
     const result =
       provider === "OpenAI"
         ? await validateOpenAIKey(value)
-        : await validateKey(value);
+        : provider === "Gemini"
+          ? await validateGeminiKey(value)
+          : await validateKey(value);
     if (apiKeys[provider] === value) {
       if (result.valid) {
         keyStatus[provider] = "valid";

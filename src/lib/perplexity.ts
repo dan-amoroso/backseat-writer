@@ -116,7 +116,7 @@ export async function validateKey(
       return { valid: false, error: "Invalid API key" };
     }
     if (err instanceof TypeError) {
-      return { valid: false, error: "Request failed (likely blocked by CORS)" };
+      return { valid: false, error: "Request failed" };
     }
     const message = err instanceof Error ? err.message : "Unknown error";
     return { valid: false, error: message };

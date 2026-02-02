@@ -37,6 +37,11 @@ export function removeComment(id: string): boolean {
   return found;
 }
 
+export function deleteAllComments() {
+  comments.set([]);
+}
+
 (window as any).addComment = addComment;
 (window as any).removeComment = removeComment;
 (window as any).listComments = () => get(comments);
+(window as any).deleteAllComments = deleteAllComments;

@@ -34,6 +34,7 @@
   import vscodeTheme from "$lib/themes/vscode";
   import { writable } from "svelte/store";
   import { loadJson, saveJson } from "$lib/storage";
+  import { editorInstance } from "$lib/editorInstance";
 
   const STORAGE_KEY = "editor-state";
 
@@ -98,6 +99,7 @@
       editorStateJson.set(JSON.stringify(saved, null, 2));
     }
 
+    editorInstance.set(editor);
     editor.setRootElement(editorRef);
 
     const allTransformers = [...TRANSFORMERS, TARGET];
@@ -154,6 +156,7 @@
 
   onDestroy(() => {
     cleanup?.();
+    editorInstance.set(null);
   });
 </script>
 
