@@ -3,9 +3,12 @@
   import {
     createEditor,
     $createTextNode as createTextNode,
+    $createParagraphNode as createParagraphNode,
+    $getRoot as getRoot,
     $getSelection as getSelection,
     $isRangeSelection as isRangeSelection,
     KEY_DOWN_COMMAND,
+    PASTE_COMMAND,
     COMMAND_PRIORITY_LOW,
     COMMAND_PRIORITY_NORMAL,
     type EditorState,
@@ -18,6 +21,7 @@
   import {
     registerMarkdownShortcuts,
     TRANSFORMERS,
+    $convertFromMarkdownString as convertFromMarkdownString,
     type TextMatchTransformer,
   } from "@lexical/markdown";
   import { ListNode, ListItemNode } from "@lexical/list";
@@ -72,6 +76,19 @@
   let styleEl: HTMLStyleElement;
   let cleanup: (() => void) | undefined;
 
+  function looksLikeMarkdown(text: string) {
+    if (!text) return false;
+    if (text.includes("```")) return true;
+    if (/^#{1,6}\s/m.test(text)) return true;
+    if (/^>\s/m.test(text)) return true;
+    if (/^[-*+]\s/m.test(text)) return true;
+    if (/^\d+\.\s/m.test(text)) return true;
+    if (/(\*\*|__)(?=\S).+?(\*\*|__)/.test(text)) return true;
+    if (/(\*|_)(?=\S).+?(\*|_)/.test(text)) return true;
+    if (/\[[^\]]+\]\([^)]+\)/.test(text)) return true;
+    return false;
+  }
+
   $: if (styleEl) {
     styleEl.textContent = vscodeTheme.styles;
   }
@@ -112,6 +129,42 @@
     cleanup = mergeRegister(
       registerRichText(editor),
       registerMarkdownShortcuts(editor, allTransformers),
+      editor.registerCommand(
+        PASTE_COMMAND,
+        (event: ClipboardEvent | null) => {
+          if (!event?.clipboardData) {
+            return false;
+          }
+          const text = event.clipboardData.getData("text/plain");
+          if (!looksLikeMarkdown(text)) {
+            return false;
+          }
+          const selection = editor.getEditorState().read(() => getSelection());
+          if (!isRangeSelection(selection)) {
+            return false;
+          }
+          event.preventDefault();
+          editor.update(() => {
+            const selection = getSelection();
+            if (!isRangeSelection(selection)) {
+              return;
+            }
+            const root = getRoot();
+            const tempContainer = createParagraphNode();
+            root.append(tempContainer);
+            convertFromMarkdownString(text, allTransformers, tempContainer);
+            const nodes = tempContainer.getChildren();
+            tempContainer.remove();
+            if (nodes.length === 0) {
+              selection.insertNodes([createTextNode(text)]);
+              return;
+            }
+            selection.insertNodes(nodes);
+          });
+          return true;
+        },
+        COMMAND_PRIORITY_NORMAL,
+      ),
       editor.registerCommand(
         TOGGLE_TARGET_COMMAND,
         (targetId) => {
