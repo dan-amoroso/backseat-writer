@@ -333,92 +333,58 @@
 
 <main>
   <h1>Backseat Writer</h1>
-  <div class="workspace" bind:this={workspaceEl}>
-    <div class="editor-pane">
-      <header class="header">
-        <FileMenu
-          on:new={handleFileNew}
-          on:open={handleFileOpen}
-          on:save={handleFileSave}
-        />
-        <div class="header-controls">
-          <label>
-            What are we writing?
-            <select
-              bind:value={selectedWritingType}
-              on:change={onWritingTypeChange}
-            >
-              {#each writingTypes as wt}
-                <option>{wt}</option>
-              {/each}
-            </select>
-          </label>
-          <span class="word-count"
-            >{wordCount} {wordCount === 1 ? "word" : "words"}</span
+  <div class="workspace">
+    <header class="header">
+      <FileMenu
+        on:new={handleFileNew}
+        on:open={handleFileOpen}
+        on:save={handleFileSave}
+      />
+      <div class="header-controls">
+        <label>
+          What are we writing?
+          <select
+            bind:value={selectedWritingType}
+            on:change={onWritingTypeChange}
           >
-          <div class="mode-toggle" role="group" aria-label="Editor mode">
-            <button
-              class="mode-toggle-button"
-              class:mode-toggle-button-active={editorMode === "rich"}
-              aria-pressed={editorMode === "rich"}
-              on:click={() => (editorMode = "rich")}
-              type="button"
-            >
-              Rich
-            </button>
-            <button
-              class="mode-toggle-button"
-              class:mode-toggle-button-active={editorMode === "markdown"}
-              aria-pressed={editorMode === "markdown"}
-              on:click={() => (editorMode = "markdown")}
-              type="button"
-            >
-              Markdown
-            </button>
-          </div>
-          <div class="undo-redo-group" role="group" aria-label="Undo and redo">
-            <button
-              class="undo-btn"
-              on:click={() => undo()}
-              aria-label="Undo"
-              type="button"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="1 4 1 10 7 10" />
-                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-              </svg>
-            </button>
-            <button
-              class="redo-btn"
-              on:click={() => redo()}
-              aria-label="Redo"
-              type="button"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="23 4 23 10 17 10" />
-                <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
-              </svg>
-            </button>
-          </div>
-          <button class="copy-btn" on:click={copyToClipboard}>
+            {#each writingTypes as wt}
+              <option>{wt}</option>
+            {/each}
+          </select>
+        </label>
+        <span class="word-count">
+          <span class="word-count-number">{wordCount}</span>
+          <span class="word-count-label"
+            >{wordCount === 1 ? "word" : "words"}</span
+          >
+        </span>
+        <div class="mode-toggle" role="group" aria-label="Editor mode">
+          <button
+            class="mode-toggle-button"
+            class:mode-toggle-button-active={editorMode === "rich"}
+            aria-pressed={editorMode === "rich"}
+            on:click={() => (editorMode = "rich")}
+            type="button"
+          >
+            Rich
+          </button>
+          <button
+            class="mode-toggle-button"
+            class:mode-toggle-button-active={editorMode === "markdown"}
+            aria-pressed={editorMode === "markdown"}
+            on:click={() => (editorMode = "markdown")}
+            type="button"
+          >
+            Markdown
+          </button>
+        </div>
+        <div class="undo-redo-group" role="group" aria-label="Undo and redo">
+          <button
+            class="undo-btn"
+            on:click={() => undo()}
+            aria-label="Undo"
+            type="button"
+          >
             <svg
               width="14"
               height="14"
@@ -429,98 +395,135 @@
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-              <path
-                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-              />
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
             </svg>
-            {copyLabel}
           </button>
           <button
-            class="feedback-btn"
-            on:click={getFeedback}
-            disabled={feedbackLoading}
-          >
-            {#if feedbackLoading}
-              <svg
-                class="feedback-spinner"
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-              >
-                <circle
-                  cx="8"
-                  cy="8"
-                  r="6"
-                  stroke="rgba(255,255,255,0.08)"
-                  stroke-width="2"
-                />
-                <path
-                  d="M14 8a6 6 0 0 0-6-6"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                />
-              </svg>
-            {/if}
-            Get Feedback
-          </button>
-          <button
-            class="settings-btn"
-            on:click={() => (settingsOpen = true)}
-            aria-label="Settings"
+            class="redo-btn"
+            on:click={() => redo()}
+            aria-label="Redo"
+            type="button"
           >
             <svg
-              width="18"
-              height="18"
+              width="14"
+              height="14"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              stroke-width="1.5"
+              stroke-width="2"
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <path
-                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-              />
-              <circle cx="12" cy="12" r="3" />
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
             </svg>
           </button>
         </div>
-      </header>
-      <Editor
-        bind:this={editorComponent}
-        bind:editorStateJson
-        mode={editorMode}
-      />
-    </div>
-    <aside class="comments-pane">
-      {#if selectionMenuTop != null && selectionMenuText}
-        <SelectionActionMenu
-          top={selectionMenuTop}
-          on:comment={handleSelectionComment}
-          on:feedback={handleSelectionFeedback}
-          on:dismiss={handleSelectionDismiss}
-          on:pin={() => selectionMenuPinned.set(true)}
-          on:unpin={() => selectionMenuPinned.set(false)}
-        />
-      {/if}
-      {#each $comments as comment (comment.id)}
-        <div
-          data-comment-id={comment.id}
-          class="comment-positioned"
-          style={commentOffsets[comment.id] != null
-            ? `top:${commentOffsets[comment.id]}px`
-            : ""}
+        <button class="copy-btn" on:click={copyToClipboard}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          {copyLabel}
+        </button>
+        <button
+          class="feedback-btn"
+          on:click={getFeedback}
+          disabled={feedbackLoading}
         >
-          <CommentBubble
-            {comment}
-            on:delete={(e) => handleDeleteComment(e.detail)}
+          {#if feedbackLoading}
+            <svg
+              class="feedback-spinner"
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+            >
+              <circle
+                cx="8"
+                cy="8"
+                r="6"
+                stroke="rgba(255,255,255,0.08)"
+                stroke-width="2"
+              />
+              <path
+                d="M14 8a6 6 0 0 0-6-6"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          {/if}
+          Get Feedback
+        </button>
+        <button
+          class="settings-btn"
+          on:click={() => (settingsOpen = true)}
+          aria-label="Settings"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+            />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </button>
+      </div>
+    </header>
+    <div class="editor-content" bind:this={workspaceEl}>
+      <div class="editor-pane">
+        <Editor
+          bind:this={editorComponent}
+          bind:editorStateJson
+          mode={editorMode}
+        />
+      </div>
+      <aside class="comments-pane">
+        {#if selectionMenuTop != null && selectionMenuText}
+          <SelectionActionMenu
+            top={selectionMenuTop}
+            on:comment={handleSelectionComment}
+            on:feedback={handleSelectionFeedback}
+            on:dismiss={handleSelectionDismiss}
+            on:pin={() => selectionMenuPinned.set(true)}
+            on:unpin={() => selectionMenuPinned.set(false)}
           />
-        </div>
-      {/each}
-    </aside>
+        {/if}
+        {#each $comments as comment (comment.id)}
+          <div
+            data-comment-id={comment.id}
+            class="comment-positioned"
+            style={commentOffsets[comment.id] != null
+              ? `top:${commentOffsets[comment.id]}px`
+              : ""}
+          >
+            <CommentBubble
+              {comment}
+              on:delete={(e) => handleDeleteComment(e.detail)}
+            />
+          </div>
+        {/each}
+      </aside>
+    </div>
   </div>
 </main>
 

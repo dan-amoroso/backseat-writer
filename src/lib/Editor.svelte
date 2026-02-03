@@ -37,8 +37,7 @@
     $toggleTarget as toggleTarget,
     TOGGLE_TARGET_COMMAND,
   } from "$lib/nodes/TargetNode";
-  import classes from "$lib/themes/classes";
-  import vscodeTheme from "$lib/themes/vscode";
+  import editorThemeClasses from "$lib/editorThemeClasses";
   import { get, writable } from "svelte/store";
   import { loadJson, saveJson } from "$lib/storage";
   import { editorInstance } from "$lib/editorInstance";
@@ -78,7 +77,6 @@
   export const editorStateJson = writable<string>("{}");
 
   let editorRef: HTMLDivElement;
-  let styleEl: HTMLStyleElement;
   let editor: ReturnType<typeof createEditor> | null = null;
   let cleanup: (() => void) | undefined;
   let markdownText = "";
@@ -127,18 +125,10 @@
     });
   }
 
-  $: if (styleEl) {
-    styleEl.textContent = vscodeTheme.styles;
-  }
-
   onMount(() => {
-    styleEl = document.createElement("style");
-    styleEl.textContent = vscodeTheme.styles;
-    document.head.appendChild(styleEl);
-
     editor = createEditor({
       namespace: "BackseatWriter",
-      theme: classes,
+      theme: editorThemeClasses,
       nodes: [
         HeadingNode,
         QuoteNode,
@@ -245,7 +235,6 @@
           });
         },
       ),
-      () => styleEl.remove(),
     );
 
     // Also listen for selection changes via the native selectionchange event
