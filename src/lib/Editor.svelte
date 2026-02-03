@@ -13,6 +13,7 @@
     type EditorState,
   } from "lexical";
   import { registerRichText, HeadingNode, QuoteNode } from "@lexical/rich-text";
+  import { createEmptyHistoryState, registerHistory } from "@lexical/history";
   import {
     mergeRegister,
     $findMatchingParent as findMatchingParent,
@@ -153,6 +154,7 @@
 
     cleanup = mergeRegister(
       registerRichText(editor),
+      registerHistory(editor, createEmptyHistoryState(), 300),
       editor.registerCommand(
         TOGGLE_TARGET_COMMAND,
         (targetId) => {
