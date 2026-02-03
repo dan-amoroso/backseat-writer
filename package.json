@@ -25,6 +25,7 @@
     "zod": "^4.3.6"
   },
   "dependencies": {
+    "@lexical/history": "^0.39.0",
     "@lexical/link": "^0.39.0",
     "@lexical/list": "^0.39.0",
     "@lexical/markdown": "^0.39.0",
