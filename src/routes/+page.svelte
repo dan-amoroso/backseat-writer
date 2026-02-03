@@ -333,43 +333,12 @@
 <main>
   <div class="workspace">
     <header class="header">
-      <FileMenu
-        on:new={handleFileNew}
-        on:open={handleFileOpen}
-        on:save={handleFileSave}
-      />
-      <div class="header-controls">
-        <label>
-          What are we writing?
-          <select
-            bind:value={selectedWritingType}
-            on:change={onWritingTypeChange}
-          >
-            {#each writingTypes as wt}
-              <option>{wt}</option>
-            {/each}
-          </select>
-        </label>
-        <div class="mode-toggle" role="group" aria-label="Editor mode">
-          <button
-            class="mode-toggle-button"
-            class:mode-toggle-button-active={editorMode === "rich"}
-            aria-pressed={editorMode === "rich"}
-            on:click={() => (editorMode = "rich")}
-            type="button"
-          >
-            Rich
-          </button>
-          <button
-            class="mode-toggle-button"
-            class:mode-toggle-button-active={editorMode === "markdown"}
-            aria-pressed={editorMode === "markdown"}
-            on:click={() => (editorMode = "markdown")}
-            type="button"
-          >
-            Markdown
-          </button>
-        </div>
+      <div class="header-left">
+        <FileMenu
+          on:new={handleFileNew}
+          on:open={handleFileOpen}
+          on:save={handleFileSave}
+        />
         <div class="undo-redo-group" role="group" aria-label="Undo and redo">
           <button
             class="undo-btn"
@@ -428,6 +397,41 @@
           </svg>
           {copyLabel}
         </button>
+      </div>
+      <div class="header-center">
+        <div class="mode-toggle" role="group" aria-label="Editor mode">
+          <button
+            class="mode-toggle-button"
+            class:mode-toggle-button-active={editorMode === "rich"}
+            aria-pressed={editorMode === "rich"}
+            on:click={() => (editorMode = "rich")}
+            type="button"
+          >
+            Rich
+          </button>
+          <button
+            class="mode-toggle-button"
+            class:mode-toggle-button-active={editorMode === "markdown"}
+            aria-pressed={editorMode === "markdown"}
+            on:click={() => (editorMode = "markdown")}
+            type="button"
+          >
+            Markdown
+          </button>
+        </div>
+      </div>
+      <div class="header-controls">
+        <label>
+          What are we writing?
+          <select
+            bind:value={selectedWritingType}
+            on:change={onWritingTypeChange}
+          >
+            {#each writingTypes as wt}
+              <option>{wt}</option>
+            {/each}
+          </select>
+        </label>
         <button
           class="feedback-btn"
           on:click={getFeedback}
