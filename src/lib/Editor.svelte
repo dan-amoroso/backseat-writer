@@ -8,7 +8,6 @@
     $getSelection as getSelection,
     $isRangeSelection as isRangeSelection,
     KEY_DOWN_COMMAND,
-    PASTE_COMMAND,
     COMMAND_PRIORITY_LOW,
     COMMAND_PRIORITY_NORMAL,
     type EditorState,
@@ -22,6 +21,7 @@
     registerMarkdownShortcuts,
     TRANSFORMERS,
     $convertFromMarkdownString as convertFromMarkdownString,
+    $convertToMarkdownString as convertToMarkdownString,
     type TextMatchTransformer,
   } from "@lexical/markdown";
   import { ListNode, ListItemNode } from "@lexical/list";
@@ -70,23 +70,50 @@
     type: "text-match",
   };
 
+  const allTransformers = [...TRANSFORMERS, TARGET];
+
   export const editorStateJson = writable<string>("{}");
 
   let editorRef: HTMLDivElement;
   let styleEl: HTMLStyleElement;
+  let editor: ReturnType<typeof createEditor> | null = null;
   let cleanup: (() => void) | undefined;
+  let markdownText = "";
+  let lastMode: "rich" | "markdown" = "rich";
+  let markdownShortcutsCleanup: (() => void) | null = null;
 
-  function looksLikeMarkdown(text: string) {
-    if (!text) return false;
-    if (text.includes("```")) return true;
-    if (/^#{1,6}\s/m.test(text)) return true;
-    if (/^>\s/m.test(text)) return true;
-    if (/^[-*+]\s/m.test(text)) return true;
-    if (/^\d+\.\s/m.test(text)) return true;
-    if (/(\*\*|__)(?=\S).+?(\*\*|__)/.test(text)) return true;
-    if (/(\*|_)(?=\S).+?(\*|_)/.test(text)) return true;
-    if (/\[[^\]]+\]\([^)]+\)/.test(text)) return true;
-    return false;
+  export let mode: "rich" | "markdown" = "rich";
+
+  function getMarkdownFromEditor() {
+    if (!editor) return "";
+    return editor
+      .getEditorState()
+      .read(() => convertToMarkdownString(allTransformers));
+  }
+
+  function applyMarkdownToEditor(markdown: string) {
+    if (!editor) return;
+    editor.update(() => {
+      const root = getRoot();
+      root.clear();
+      convertFromMarkdownString(markdown, allTransformers, root);
+    });
+  }
+
+  function applyPlainTextToEditor(text: string) {
+    if (!editor) return;
+    editor.update(() => {
+      const root = getRoot();
+      root.clear();
+      const lines = text.split("\n");
+      for (const line of lines) {
+        const paragraph = createParagraphNode();
+        if (line.length > 0) {
+          paragraph.append(createTextNode(line));
+        }
+        root.append(paragraph);
+      }
+    });
   }
 
   $: if (styleEl) {
@@ -98,7 +125,7 @@
     styleEl.textContent = vscodeTheme.styles;
     document.head.appendChild(styleEl);
 
-    const editor = createEditor({
+    editor = createEditor({
       namespace: "BackseatWriter",
       theme: classes,
       nodes: [
@@ -124,47 +151,8 @@
     editorInstance.set(editor);
     editor.setRootElement(editorRef);
 
-    const allTransformers = [...TRANSFORMERS, TARGET];
-
     cleanup = mergeRegister(
       registerRichText(editor),
-      registerMarkdownShortcuts(editor, allTransformers),
-      editor.registerCommand(
-        PASTE_COMMAND,
-        (event: ClipboardEvent | null) => {
-          if (!event?.clipboardData) {
-            return false;
-          }
-          const text = event.clipboardData.getData("text/plain");
-          if (!looksLikeMarkdown(text)) {
-            return false;
-          }
-          const selection = editor.getEditorState().read(() => getSelection());
-          if (!isRangeSelection(selection)) {
-            return false;
-          }
-          event.preventDefault();
-          editor.update(() => {
-            const selection = getSelection();
-            if (!isRangeSelection(selection)) {
-              return;
-            }
-            const root = getRoot();
-            const tempContainer = createParagraphNode();
-            root.append(tempContainer);
-            convertFromMarkdownString(text, allTransformers, tempContainer);
-            const nodes = tempContainer.getChildren();
-            tempContainer.remove();
-            if (nodes.length === 0) {
-              selection.insertNodes([createTextNode(text)]);
-              return;
-            }
-            selection.insertNodes(nodes);
-          });
-          return true;
-        },
-        COMMAND_PRIORITY_NORMAL,
-      ),
       editor.registerCommand(
         TOGGLE_TARGET_COMMAND,
         (targetId) => {
@@ -209,6 +197,9 @@
 
           // Track selection for the action menu
           editorState.read(() => {
+            if (mode === "markdown") {
+              markdownText = getRoot().getTextContent();
+            }
             if (get(selectionMenuSuppressed) || !editorRef) {
               return;
             }
@@ -301,9 +292,29 @@
   });
 
   onDestroy(() => {
+    markdownShortcutsCleanup?.();
     cleanup?.();
     editorInstance.set(null);
   });
+
+  $: if (editor && mode !== lastMode) {
+    if (mode === "markdown") {
+      markdownText = getMarkdownFromEditor();
+      applyPlainTextToEditor(markdownText);
+      markdownShortcutsCleanup?.();
+      markdownShortcutsCleanup = null;
+    } else {
+      applyMarkdownToEditor(markdownText);
+    }
+    lastMode = mode;
+  }
+
+  $: if (editor && mode === "rich" && !markdownShortcutsCleanup) {
+    markdownShortcutsCleanup = registerMarkdownShortcuts(
+      editor,
+      allTransformers,
+    );
+  }
 </script>
 
 <div class="editor-container">

@@ -39,6 +39,7 @@
   let feedbackError = "";
   let pipelineResults: PipelineResult | null = null;
   let feedbackApplyResult: ApplyResult | null = null;
+  let editorMode: "rich" | "markdown" = "rich";
 
   async function getFeedback() {
     feedbackLoading = true;
@@ -276,6 +277,26 @@
       <span class="word-count"
         >{wordCount} {wordCount === 1 ? "word" : "words"}</span
       >
+      <div class="mode-toggle" role="group" aria-label="Editor mode">
+        <button
+          class="mode-toggle-button"
+          class:mode-toggle-button-active={editorMode === "rich"}
+          aria-pressed={editorMode === "rich"}
+          on:click={() => (editorMode = "rich")}
+          type="button"
+        >
+          Rich
+        </button>
+        <button
+          class="mode-toggle-button"
+          class:mode-toggle-button-active={editorMode === "markdown"}
+          aria-pressed={editorMode === "markdown"}
+          on:click={() => (editorMode = "markdown")}
+          type="button"
+        >
+          Markdown
+        </button>
+      </div>
       <button class="copy-btn" on:click={copyToClipboard}>
         <svg
           width="14"
@@ -347,7 +368,7 @@
   </header>
   <div class="workspace" bind:this={workspaceEl}>
     <div class="editor-pane">
-      <Editor bind:editorStateJson />
+      <Editor bind:editorStateJson mode={editorMode} />
     </div>
     <aside class="comments-pane">
       {#if selectionMenuTop != null && selectionMenuText}
