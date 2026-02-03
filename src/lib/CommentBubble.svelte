@@ -3,7 +3,6 @@
   import type { Comment } from "$lib/comments";
 
   export let comment: Comment;
-
   const dispatch = createEventDispatcher<{ delete: string }>();
 
   function onMouseEnter() {

@@ -1,144 +1,155 @@
-import type { EditorTheme } from './types';
-import classes from './classes';
+import type { EditorTheme } from "./types";
+import classes from "./classes";
 
 const styles = `
 .editor-container {
-	background: #1e1e1e;
-	border: 1px solid #3c3c3c;
-	border-radius: 4px;
-	font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
-	color: #d4d4d4;
+	background: #1c1b19;
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 8px;
+	font-family: 'Newsreader', 'Charter', 'Georgia', serif;
+	color: #c8c4be;
 }
 
 .editor {
 	min-height: 400px;
-	padding: 16px 20px;
+	padding: 32px 36px;
 	outline: none;
-	font-size: 14px;
-	line-height: 1.6;
-	caret-color: #aeafad;
+	font-size: 17px;
+	line-height: 1.75;
+	caret-color: #d4a054;
 	tab-size: 4;
 }
 
 .bsw-paragraph {
-	margin: 0 0 4px;
-	color: #d4d4d4;
+	margin: 0 0 8px;
+	color: #c8c4be;
 }
 
 .bsw-h1 {
 	font-size: 2em;
-	color: #569cd6;
-	border-bottom: 1px solid #3c3c3c;
-	padding-bottom: 6px;
-	margin: 16px 0 8px;
+	font-weight: 500;
+	color: #e8e0d4;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	padding-bottom: 8px;
+	margin: 20px 0 12px;
+	letter-spacing: -0.01em;
 }
 
 .bsw-h2 {
 	font-size: 1.5em;
-	color: #4ec9b0;
-	border-bottom: 1px solid #3c3c3c;
-	padding-bottom: 4px;
-	margin: 14px 0 6px;
+	font-weight: 500;
+	color: #d4a054;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+	padding-bottom: 6px;
+	margin: 16px 0 8px;
 }
 
 .bsw-h3 {
 	font-size: 1.25em;
-	color: #9cdcfe;
-	margin: 12px 0 4px;
+	font-weight: 500;
+	color: #c0a878;
+	margin: 14px 0 6px;
 }
 
 .bsw-h4 {
 	font-size: 1.1em;
-	color: #9cdcfe;
-	margin: 10px 0 4px;
+	font-weight: 500;
+	color: #b0a080;
+	margin: 12px 0 4px;
 }
 
 .bsw-h5 {
 	font-size: 1em;
-	color: #9cdcfe;
-	margin: 8px 0 4px;
+	font-weight: 500;
+	color: #a09880;
+	margin: 10px 0 4px;
 }
 
 .bsw-h6 {
 	font-size: 0.9em;
-	color: #808080;
+	font-weight: 500;
+	color: #807868;
 	margin: 8px 0 4px;
 }
 
 .bsw-bold {
 	font-weight: 700;
-	color: #569cd6;
+	color: #e0d8cc;
 }
 
 .bsw-italic {
 	font-style: italic;
-	color: #c586c0;
+	color: #b8a890;
 }
 
 .bsw-underline {
 	text-decoration: underline;
-	text-decoration-color: #808080;
-	text-underline-offset: 2px;
+	text-decoration-color: #6a6050;
+	text-underline-offset: 3px;
 }
 
 .bsw-strikethrough {
 	text-decoration: line-through;
-	color: #808080;
+	color: #706860;
 }
 
 .bsw-code-inline {
-	font-family: inherit;
-	background: #2d2d2d;
-	border: 1px solid #3c3c3c;
+	font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.06);
 	border-radius: 3px;
 	padding: 1px 5px;
-	font-size: 0.9em;
-	color: #ce9178;
+	font-size: 0.85em;
+	color: #d4a054;
 }
 
 .bsw-code-block {
 	display: block;
-	background: #1a1a1a;
-	border: 1px solid #3c3c3c;
-	border-radius: 4px;
-	padding: 12px 16px;
-	margin: 8px 0;
+	font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+	background: rgba(0, 0, 0, 0.2);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 6px;
+	padding: 14px 18px;
+	margin: 10px 0;
 	font-size: 13px;
 	line-height: 1.5;
-	color: #d4d4d4;
+	color: #c8c4be;
 	overflow-x: auto;
 }
 
 .bsw-quote {
-	border-left: 3px solid #569cd6;
-	margin: 8px 0;
-	padding: 4px 16px;
-	color: #9da5b4;
-	background: rgba(86, 156, 214, 0.05);
+	border-left: 3px solid #d4a054;
+	margin: 10px 0;
+	padding: 6px 20px;
+	color: #a09888;
+	background: rgba(212, 160, 84, 0.03);
+	font-style: italic;
 }
 
 .bsw-link {
-	color: #3794ff;
-	text-decoration: none;
+	color: #d4a054;
+	text-decoration: underline;
+	text-decoration-color: rgba(212, 160, 84, 0.3);
+	text-underline-offset: 2px;
 }
 
 .bsw-link:hover {
-	text-decoration: underline;
+	text-decoration-color: #d4a054;
 }
 
 .bsw-ul,
 .bsw-ol {
-	margin: 4px 0;
-	padding-left: 24px;
+	margin: 6px 0;
+	padding-left: 28px;
 }
 
 .bsw-listitem {
-	margin: 2px 0;
-	color: #d4d4d4;
+	margin: 3px 0;
+	color: #c8c4be;
 }
 
 .bsw-listitem::marker {
-	color: #808080;
+	color: #6a6050;
 }
 
 .bsw-nested-listitem {
@@ -149,18 +160,27 @@ const styles = `
 	background: transparent;
 	color: inherit;
 	border-radius: 2px;
-	transition: background-color 0.2s ease;
+	box-decoration-break: clone;
+	-webkit-box-decoration-break: clone;
+	border-bottom: 2px solid transparent;
+	transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.bsw-target[data-has-comments="true"] {
+	background: rgba(212, 160, 84, 0.12);
+	border-bottom-color: rgba(212, 160, 84, 0.35);
 }
 
 .bsw-target[data-active="true"] {
-	background: rgba(86, 156, 214, 0.25);
+	background: rgba(212, 160, 84, 0.22);
+	border-bottom-color: #d4a054;
 }
 
 .editor ::selection {
-	background: #264f78;
+	background: rgba(212, 160, 84, 0.2);
 }
 `;
 
-const theme: EditorTheme = { name: 'VS Code Dark', classes, styles };
+const theme: EditorTheme = { name: "VS Code Dark", classes, styles };
 
 export default theme;
