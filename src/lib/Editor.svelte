@@ -10,6 +10,8 @@
     KEY_DOWN_COMMAND,
     COMMAND_PRIORITY_LOW,
     COMMAND_PRIORITY_NORMAL,
+    UNDO_COMMAND,
+    REDO_COMMAND,
     type EditorState,
   } from "lexical";
   import { registerRichText, HeadingNode, QuoteNode } from "@lexical/rich-text";
@@ -84,6 +86,14 @@
   let markdownShortcutsCleanup: (() => void) | null = null;
 
   export let mode: "rich" | "markdown" = "rich";
+
+  export function undo() {
+    editor?.dispatchCommand(UNDO_COMMAND, undefined);
+  }
+
+  export function redo() {
+    editor?.dispatchCommand(REDO_COMMAND, undefined);
+  }
 
   function getMarkdownFromEditor() {
     if (!editor) return "";
@@ -177,9 +187,9 @@
               const node = selection.anchor.getNode();
               const targetParent = findMatchingParent(node, isTargetNode);
               if (targetParent) {
-                editor.dispatchCommand(TOGGLE_TARGET_COMMAND, null);
+                editor!.dispatchCommand(TOGGLE_TARGET_COMMAND, null);
               } else {
-                editor.dispatchCommand(
+                editor!.dispatchCommand(
                   TOGGLE_TARGET_COMMAND,
                   crypto.randomUUID(),
                 );
@@ -260,7 +270,7 @@
         return;
       }
       // If there is a non-collapsed native selection, read from Lexical
-      editor.getEditorState().read(() => {
+      editor!.getEditorState().read(() => {
         const selection = getSelection();
         if (
           isRangeSelection(selection) &&

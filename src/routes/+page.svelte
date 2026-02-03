@@ -40,6 +40,7 @@
   let pipelineResults: PipelineResult | null = null;
   let feedbackApplyResult: ApplyResult | null = null;
   let editorMode: "rich" | "markdown" = "rich";
+  let editorComponent: Editor;
 
   async function getFeedback() {
     feedbackLoading = true;
@@ -93,6 +94,14 @@
   function onWritingTypeChange(event: Event) {
     const select = event.target as HTMLSelectElement;
     setSetting("writingType", select.value);
+  }
+
+  function undo() {
+    editorComponent?.undo();
+  }
+
+  function redo() {
+    editorComponent?.redo();
   }
 
   let copyLabel = "Copy";
@@ -297,6 +306,48 @@
           Markdown
         </button>
       </div>
+      <div class="undo-redo-group" role="group" aria-label="Undo and redo">
+        <button
+          class="undo-btn"
+          on:click={() => undo()}
+          aria-label="Undo"
+          type="button"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="1 4 1 10 7 10" />
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+          </svg>
+        </button>
+        <button
+          class="redo-btn"
+          on:click={() => redo()}
+          aria-label="Redo"
+          type="button"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="23 4 23 10 17 10" />
+            <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
+          </svg>
+        </button>
+      </div>
       <button class="copy-btn" on:click={copyToClipboard}>
         <svg
           width="14"
@@ -368,7 +419,11 @@
   </header>
   <div class="workspace" bind:this={workspaceEl}>
     <div class="editor-pane">
-      <Editor bind:editorStateJson mode={editorMode} />
+      <Editor
+        bind:this={editorComponent}
+        bind:editorStateJson
+        mode={editorMode}
+      />
     </div>
     <aside class="comments-pane">
       {#if selectionMenuTop != null && selectionMenuText}
