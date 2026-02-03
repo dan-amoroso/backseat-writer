@@ -11,8 +11,7 @@
   import CommentBubble from "$lib/CommentBubble.svelte";
   import SelectionActionMenu from "$lib/SelectionActionMenu.svelte";
   import SettingsModal from "$lib/SettingsModal.svelte";
-  import DebugWidget from "$lib/DebugWidget.svelte";
-  import FeedbackWidget from "$lib/FeedbackWidget.svelte";
+  import BottomToolbar from "$lib/BottomToolbar.svelte";
   import {
     comments,
     addComment,
@@ -332,7 +331,6 @@
 </script>
 
 <main>
-  <h1>Backseat Writer</h1>
   <div class="workspace">
     <header class="header">
       <FileMenu
@@ -352,12 +350,6 @@
             {/each}
           </select>
         </label>
-        <span class="word-count">
-          <span class="word-count-number">{wordCount}</span>
-          <span class="word-count-label"
-            >{wordCount === 1 ? "word" : "words"}</span
-          >
-        </span>
         <div class="mode-toggle" role="group" aria-label="Editor mode">
           <button
             class="mode-toggle-button"
@@ -525,19 +517,15 @@
       </aside>
     </div>
   </div>
-</main>
-
-<div class="widget-dock">
-  <FeedbackWidget
-    loading={feedbackLoading}
-    results={pipelineResults}
-    applyResult={feedbackApplyResult}
-    error={feedbackError}
+  <BottomToolbar
+    {wordCount}
+    {feedbackLoading}
+    {pipelineResults}
+    {feedbackApplyResult}
+    {feedbackError}
+    {editorStateJson}
   />
-  {#if editorStateJson}
-    <DebugWidget {editorStateJson} />
-  {/if}
-</div>
+</main>
 
 {#if settingsOpen}
   <SettingsModal on:close={() => (settingsOpen = false)} />

@@ -346,7 +346,7 @@
 main {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 20px 24px 0;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -454,6 +454,8 @@ select:focus {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 16px;
   padding-bottom: 24px;
 }
 
@@ -489,6 +491,30 @@ select:focus {
   position: relative;
 }
 
+.bottom-toolbar {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 12px 0 16px;
+}
+
+.bottom-toolbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.bottom-toolbar-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .comment-positioned {
   position: absolute;
   left: 0;
@@ -498,9 +524,7 @@ select:focus {
 /* ── Feedback widget ── */
 
 .feedback-widget {
-  position: fixed;
-  bottom: 16px;
-  left: 16px;
+  position: relative;
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -594,32 +618,30 @@ select:focus {
 /* ── Debug widget ── */
 
 .debug-widget {
-  position: fixed;
-  bottom: 16px;
-  right: 16px;
+  position: relative;
   z-index: 60;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
 }
 
-.widget-dock {
-  position: fixed;
-  bottom: 16px;
-  left: 16px;
-  z-index: 60;
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
+.bottom-toolbar .feedback-widget,
+.bottom-toolbar .debug-widget {
+  position: relative;
 }
 
-.widget-dock .feedback-widget,
-.widget-dock .debug-widget {
-  position: static;
-  bottom: auto;
-  left: auto;
-  right: auto;
-  z-index: auto;
+.bottom-toolbar .feedback-panel {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 8px;
+}
+
+.bottom-toolbar .debug-panel {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
 }
 
 .debug-toggle {
