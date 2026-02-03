@@ -4,16 +4,27 @@
   import Editor from "$lib/Editor.svelte";
   import { editorInstance } from "$lib/editorInstance";
   import CommentBubble from "$lib/CommentBubble.svelte";
+  import SelectionActionMenu from "$lib/SelectionActionMenu.svelte";
   import SettingsModal from "$lib/SettingsModal.svelte";
   import DebugWidget from "$lib/DebugWidget.svelte";
   import FeedbackWidget from "$lib/FeedbackWidget.svelte";
-  import { comments, removeComment, deleteAllComments } from "$lib/comments";
+  import {
+    comments,
+    addComment,
+    removeComment,
+    deleteAllComments,
+  } from "$lib/comments";
   import type { Writable } from "svelte/store";
   import { settings, setSetting } from "$lib/storage";
   import { extractTextFromNodes, runPipeline } from "$lib/pipeline";
   import type { PipelineResult, ApplyResult } from "$lib/pipeline";
   import { applyPipelineResults } from "$lib/applyPipelineResults";
+  import {
+    TOGGLE_TARGET_COMMAND,
+    $toggleTarget as toggleTarget,
+  } from "$lib/nodes/TargetNode";
   import { browser } from "$app/environment";
+  import { selectionInfo as selectionInfoStore } from "$lib/selectionInfo";
 
   const writingTypes = ["Blog Post", "Essay"];
   let selectedWritingType = writingTypes[0];
@@ -112,10 +123,11 @@
 
   $: if (browser && $comments) {
     const referencedIds = new Set($comments.map((c) => c.targetId));
-    const marks = document.querySelectorAll("mark[data-target-id]");
+    const marks = document.querySelectorAll("mark[data-target-ids]");
     for (const mark of marks) {
-      const id = mark.getAttribute("data-target-id");
-      if (id && referencedIds.has(id)) {
+      const idsAttr = mark.getAttribute("data-target-ids") || "";
+      const ids = idsAttr.split(",").filter(Boolean);
+      if (ids.some((id) => referencedIds.has(id))) {
         mark.setAttribute("data-has-comments", "true");
       } else {
         mark.removeAttribute("data-has-comments");
@@ -134,9 +146,7 @@
     const offsets: Record<string, number> = {};
 
     for (const comment of $comments) {
-      const mark = document.querySelector(
-        `mark[data-target-id="${comment.targetId}"]`,
-      );
+      const mark = findMarkByTargetId(comment.targetId);
       let idealTop = 0;
       if (mark) {
         const markRect = mark.getBoundingClientRect();
@@ -144,7 +154,6 @@
       }
       const top = Math.max(idealTop, nextAvailable);
       offsets[comment.id] = top;
-      // Estimate bubble height; will be corrected on next tick via ResizeObserver if needed
       const bubbleEl = workspaceEl.querySelector(
         `[data-comment-id="${comment.id}"]`,
       );
@@ -156,9 +165,67 @@
     commentOffsets = offsets;
   }
 
+  function findMarkByTargetId(targetId: string): Element | null {
+    const marks = document.querySelectorAll("mark[data-target-ids]");
+    for (const mark of marks) {
+      const ids = (mark.getAttribute("data-target-ids") || "").split(",");
+      if (ids.includes(targetId)) {
+        return mark;
+      }
+    }
+    return null;
+  }
+
   $: if (browser && $comments && workspaceEl) {
-    // Recompute after a tick so DOM is updated
     requestAnimationFrame(() => computeCommentOffsets());
+  }
+
+  // Selection action menu
+  let selectionMenuTop: number | null = null;
+  let selectionMenuText = "";
+
+  $: if ($selectionInfoStore && workspaceEl) {
+    const info = $selectionInfoStore;
+    const paneRect = workspaceEl.getBoundingClientRect();
+    selectionMenuTop = info.anchorRect.top - paneRect.top;
+    selectionMenuText = info.text;
+  } else {
+    selectionMenuTop = null;
+    selectionMenuText = "";
+  }
+
+  function handleSelectionComment(event: CustomEvent<{ text: string }>) {
+    const editor = get(editorInstance);
+    if (!editor) return;
+
+    const targetId = crypto.randomUUID();
+    editor.update(() => {
+      toggleTarget(targetId);
+    });
+
+    addComment(targetId, "You", event.detail.text);
+
+    selectionInfoStore.set(null);
+  }
+
+  function handleSelectionFeedback() {
+    const editor = get(editorInstance);
+    if (!editor || !selectionMenuText) return;
+
+    const targetId = crypto.randomUUID();
+    editor.dispatchCommand(TOGGLE_TARGET_COMMAND, targetId);
+
+    addComment(
+      targetId,
+      "You",
+      `[Feedback requested on: "${selectionMenuText.slice(0, 80)}${selectionMenuText.length > 80 ? "..." : ""}"]`,
+    );
+
+    selectionInfoStore.set(null);
+  }
+
+  function handleSelectionDismiss() {
+    selectionInfoStore.set(null);
   }
 </script>
 
@@ -254,6 +321,15 @@
       <Editor bind:editorStateJson />
     </div>
     <aside class="comments-pane">
+      {#if selectionMenuTop != null && selectionMenuText}
+        <SelectionActionMenu
+          top={selectionMenuTop}
+          selectionText={selectionMenuText}
+          on:comment={handleSelectionComment}
+          on:feedback={handleSelectionFeedback}
+          on:dismiss={handleSelectionDismiss}
+        />
+      {/if}
       {#each $comments as comment (comment.id)}
         <div
           data-comment-id={comment.id}

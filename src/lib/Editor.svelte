@@ -35,6 +35,7 @@
   import { writable } from "svelte/store";
   import { loadJson, saveJson } from "$lib/storage";
   import { editorInstance } from "$lib/editorInstance";
+  import { selectionInfo } from "$lib/selectionInfo";
 
   const STORAGE_KEY = "editor-state";
 
@@ -51,7 +52,7 @@
     replace: (textNode, match) => {
       const [, text] = match;
       const targetId = crypto.randomUUID();
-      const targetNode = createTargetNode(targetId);
+      const targetNode = createTargetNode([targetId]);
       const targetTextNode = createTextNode(text);
       targetTextNode.setFormat(textNode.getFormat());
       targetNode.append(targetTextNode);
@@ -148,10 +149,73 @@
           const json = editorState.toJSON();
           saveJson(STORAGE_KEY, json);
           editorStateJson.set(JSON.stringify(json, null, 2));
+
+          // Track selection for the action menu
+          editorState.read(() => {
+            const selection = getSelection();
+            if (
+              isRangeSelection(selection) &&
+              !selection.isCollapsed() &&
+              selection.getTextContent().trim().length > 0
+            ) {
+              const nativeSelection = window.getSelection();
+              if (nativeSelection && nativeSelection.rangeCount > 0) {
+                const range = nativeSelection.getRangeAt(0);
+                const rect = range.getBoundingClientRect();
+                selectionInfo.set({
+                  text: selection.getTextContent(),
+                  anchorRect: rect,
+                });
+              } else {
+                selectionInfo.set(null);
+              }
+            } else {
+              selectionInfo.set(null);
+            }
+          });
         },
       ),
       () => styleEl.remove(),
     );
+
+    // Also listen for selection changes via the native selectionchange event
+    // to catch cases where the user clicks to collapse the selection
+    function onSelectionChange() {
+      const nativeSelection = window.getSelection();
+      if (
+        !nativeSelection ||
+        nativeSelection.isCollapsed ||
+        nativeSelection.rangeCount === 0
+      ) {
+        selectionInfo.set(null);
+        return;
+      }
+      // If there is a non-collapsed native selection, read from Lexical
+      editor.getEditorState().read(() => {
+        const selection = getSelection();
+        if (
+          isRangeSelection(selection) &&
+          !selection.isCollapsed() &&
+          selection.getTextContent().trim().length > 0
+        ) {
+          const range = nativeSelection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          selectionInfo.set({
+            text: selection.getTextContent(),
+            anchorRect: rect,
+          });
+        } else {
+          selectionInfo.set(null);
+        }
+      });
+    }
+
+    document.addEventListener("selectionchange", onSelectionChange);
+    const origCleanup = cleanup;
+    cleanup = () => {
+      origCleanup();
+      document.removeEventListener("selectionchange", onSelectionChange);
+    };
   });
 
   onDestroy(() => {

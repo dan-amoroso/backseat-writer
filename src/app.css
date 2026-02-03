@@ -813,3 +813,111 @@ select:focus {
   letter-spacing: 0.04em;
   color: #d4a054;
 }
+
+/* ── Selection action menu ── */
+
+.selection-action-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  animation: selectionMenuIn 0.12s ease-out;
+}
+
+@keyframes selectionMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.selection-action-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.selection-action-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  color: #c8c4be;
+  font-size: 12px;
+  font-family: inherit;
+  transition: border-color 0.15s ease-out;
+}
+
+.selection-action-input::placeholder {
+  color: #4a4540;
+}
+
+.selection-action-input:focus {
+  outline: none;
+  border-color: rgba(212, 160, 84, 0.3);
+}
+
+.selection-action-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(212, 160, 84, 0.25);
+  border-radius: 6px;
+  background: rgba(212, 160, 84, 0.1);
+  color: #d4a054;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+
+.selection-action-submit:hover {
+  background: rgba(212, 160, 84, 0.18);
+  border-color: rgba(212, 160, 84, 0.4);
+}
+
+.selection-action-submit:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.selection-action-feedback {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  color: #706860;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color 0.15s ease-out,
+    background 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+
+.selection-action-feedback:hover {
+  color: #c8c4be;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}

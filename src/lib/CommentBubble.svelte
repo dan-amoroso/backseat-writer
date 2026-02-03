@@ -5,18 +5,28 @@
   export let comment: Comment;
   const dispatch = createEventDispatcher<{ delete: string }>();
 
+  function findMarksByTargetId(targetId: string): Element[] {
+    const marks = document.querySelectorAll("mark[data-target-ids]");
+    const result: Element[] = [];
+    for (const mark of marks) {
+      const ids = (mark.getAttribute("data-target-ids") || "").split(",");
+      if (ids.includes(targetId)) {
+        result.push(mark);
+      }
+    }
+    return result;
+  }
+
   function onMouseEnter() {
-    const els = document.querySelectorAll(
-      `mark[data-target-id="${comment.targetId}"]`,
+    findMarksByTargetId(comment.targetId).forEach((el) =>
+      el.setAttribute("data-active", "true"),
     );
-    els.forEach((el) => el.setAttribute("data-active", "true"));
   }
 
   function onMouseLeave() {
-    const els = document.querySelectorAll(
-      `mark[data-target-id="${comment.targetId}"]`,
+    findMarksByTargetId(comment.targetId).forEach((el) =>
+      el.removeAttribute("data-active"),
     );
-    els.forEach((el) => el.removeAttribute("data-active"));
   }
 </script>
 

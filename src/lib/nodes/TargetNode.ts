@@ -22,38 +22,40 @@ import {
 import { addClassNamesToElement, $findMatchingParent } from "@lexical/utils";
 
 export type SerializedTargetNode = Spread<
-  { targetId: string },
+  { targetIds: string[] },
   SerializedElementNode
 >;
 
 export type TargetId = string;
 
 export class TargetNode extends ElementNode {
-  __targetId: string;
+  __targetIds: string[];
 
   static getType(): string {
     return "target";
   }
 
   static clone(node: TargetNode): TargetNode {
-    return new TargetNode(node.__targetId, node.__key);
+    return new TargetNode([...node.__targetIds], node.__key);
   }
 
-  constructor(targetId: string, key?: NodeKey) {
+  constructor(targetIds: string[], key?: NodeKey) {
     super(key);
-    this.__targetId = targetId;
+    this.__targetIds = targetIds;
   }
 
   createDOM(config: EditorConfig): HTMLElement {
     const element = document.createElement("mark");
-    element.setAttribute("data-target-id", this.__targetId);
+    element.setAttribute("data-target-ids", this.__targetIds.join(","));
     addClassNamesToElement(element, config.theme.target);
     return element;
   }
 
   updateDOM(prevNode: TargetNode, element: HTMLElement): boolean {
-    if (prevNode.__targetId !== this.__targetId) {
-      element.setAttribute("data-target-id", this.__targetId);
+    const prev = prevNode.__targetIds.join(",");
+    const curr = this.__targetIds.join(",");
+    if (prev !== curr) {
+      element.setAttribute("data-target-ids", curr);
     }
     return false;
   }
@@ -62,7 +64,10 @@ export class TargetNode extends ElementNode {
     return {
       mark: (node: Node) => {
         const element = node as HTMLElement;
-        if (!element.hasAttribute("data-target-id")) {
+        if (
+          !element.hasAttribute("data-target-ids") &&
+          !element.hasAttribute("data-target-id")
+        ) {
           return null;
         }
         return {
@@ -73,35 +78,50 @@ export class TargetNode extends ElementNode {
     };
   }
 
-  static importJSON(serializedNode: SerializedTargetNode): TargetNode {
-    return $createTargetNode(serializedNode.targetId).updateFromJSON(
-      serializedNode,
-    );
+  static importJSON(
+    serializedNode: SerializedTargetNode & { targetId?: string },
+  ): TargetNode {
+    // Backward compat: accept legacy single targetId
+    const ids =
+      serializedNode.targetIds ??
+      (serializedNode.targetId ? [serializedNode.targetId] : []);
+    return $createTargetNode(ids).updateFromJSON(serializedNode);
   }
 
   updateFromJSON(
-    serializedNode: LexicalUpdateJSON<SerializedTargetNode>,
+    serializedNode: LexicalUpdateJSON<SerializedTargetNode> & {
+      targetId?: string;
+    },
   ): this {
-    return super
-      .updateFromJSON(serializedNode)
-      .setTargetId(serializedNode.targetId);
+    const ids =
+      serializedNode.targetIds ??
+      (serializedNode.targetId ? [serializedNode.targetId] : []);
+    return super.updateFromJSON(serializedNode).setTargetIds(ids);
   }
 
   exportJSON(): SerializedTargetNode {
     return {
       ...super.exportJSON(),
-      targetId: this.getTargetId(),
+      targetIds: this.getTargetIds(),
     };
   }
 
-  getTargetId(): string {
-    return this.getLatest().__targetId;
+  getTargetIds(): string[] {
+    return this.getLatest().__targetIds;
   }
 
-  setTargetId(targetId: string): this {
+  setTargetIds(targetIds: string[]): this {
     const writable = this.getWritable();
-    writable.__targetId = targetId;
+    writable.__targetIds = targetIds;
     return writable;
+  }
+
+  addTargetId(targetId: string): this {
+    const current = this.getTargetIds();
+    if (current.includes(targetId)) {
+      return this;
+    }
+    return this.setTargetIds([...current, targetId]);
   }
 
   insertNewAfter(
@@ -144,15 +164,22 @@ export class TargetNode extends ElementNode {
 
 function $convertTargetElement(domNode: Node): DOMConversionOutput {
   const element = domNode as HTMLElement;
-  const targetId = element.getAttribute("data-target-id");
-  if (targetId) {
-    return { node: $createTargetNode(targetId) };
+  // Support both new data-target-ids and legacy data-target-id
+  const idsAttr = element.getAttribute("data-target-ids");
+  const idAttr = element.getAttribute("data-target-id");
+  const ids = idsAttr
+    ? idsAttr.split(",").filter(Boolean)
+    : idAttr
+      ? [idAttr]
+      : [];
+  if (ids.length > 0) {
+    return { node: $createTargetNode(ids) };
   }
   return { node: null };
 }
 
-export function $createTargetNode(targetId: string): TargetNode {
-  return $applyNodeReplacement(new TargetNode(targetId));
+export function $createTargetNode(targetIds: string[]): TargetNode {
+  return $applyNodeReplacement(new TargetNode(targetIds));
 }
 
 export function $isTargetNode(
@@ -186,9 +213,7 @@ export function createTarget(content: string): TargetId | null {
     if (matchNode) {
       return null;
     }
-    if ($findMatchingParent(node, $isTargetNode)) {
-      return null;
-    }
+    // Allow nodes already inside a target — we'll add the new ID
     matchNode = node;
     matchIndex = index;
   }
@@ -235,14 +260,16 @@ export function $toggleTarget(targetId: string | null): void {
     return;
   }
 
-  // Wrap: create a new TargetNode around the selection
+  // Wrap: create a new TargetNode or add ID to existing ones
   let targetNode: TargetNode | null = null;
   for (const node of nodes) {
     if (!node.isAttached()) {
       continue;
     }
     const existingTarget = $findMatchingParent(node, $isTargetNode);
-    if (existingTarget) {
+    if ($isTargetNode(existingTarget)) {
+      // Add the new targetId to the existing target
+      existingTarget.addTargetId(targetId);
       continue;
     }
     if ($isElementNode(node)) {
@@ -255,7 +282,7 @@ export function $toggleTarget(targetId: string | null): void {
       prevSibling.append(node);
       continue;
     }
-    targetNode = $createTargetNode(targetId);
+    targetNode = $createTargetNode([targetId]);
     node.insertAfter(targetNode);
     targetNode.append(node);
   }
