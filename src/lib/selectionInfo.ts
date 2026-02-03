@@ -6,3 +6,5 @@ export interface SelectionInfo {
 }
 
 export const selectionInfo = writable<SelectionInfo | null>(null);
+export const selectionMenuPinned = writable(false);
+export const selectionMenuSuppressed = writable(false);

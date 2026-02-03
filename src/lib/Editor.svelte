@@ -32,10 +32,14 @@
   } from "$lib/nodes/TargetNode";
   import classes from "$lib/themes/classes";
   import vscodeTheme from "$lib/themes/vscode";
-  import { writable } from "svelte/store";
+  import { get, writable } from "svelte/store";
   import { loadJson, saveJson } from "$lib/storage";
   import { editorInstance } from "$lib/editorInstance";
-  import { selectionInfo } from "$lib/selectionInfo";
+  import {
+    selectionInfo,
+    selectionMenuPinned,
+    selectionMenuSuppressed,
+  } from "$lib/selectionInfo";
 
   const STORAGE_KEY = "editor-state";
 
@@ -152,6 +156,9 @@
 
           // Track selection for the action menu
           editorState.read(() => {
+            if (get(selectionMenuSuppressed)) {
+              return;
+            }
             const selection = getSelection();
             if (
               isRangeSelection(selection) &&
@@ -167,10 +174,14 @@
                   anchorRect: rect,
                 });
               } else {
-                selectionInfo.set(null);
+                if (!get(selectionMenuPinned)) {
+                  selectionInfo.set(null);
+                }
               }
             } else {
-              selectionInfo.set(null);
+              if (!get(selectionMenuPinned)) {
+                selectionInfo.set(null);
+              }
             }
           });
         },
@@ -181,6 +192,9 @@
     // Also listen for selection changes via the native selectionchange event
     // to catch cases where the user clicks to collapse the selection
     function onSelectionChange() {
+      if (get(selectionMenuPinned)) {
+        return;
+      }
       const nativeSelection = window.getSelection();
       if (
         !nativeSelection ||
@@ -188,6 +202,12 @@
         nativeSelection.rangeCount === 0
       ) {
         selectionInfo.set(null);
+        if (get(selectionMenuSuppressed)) {
+          selectionMenuSuppressed.set(false);
+        }
+        return;
+      }
+      if (get(selectionMenuSuppressed)) {
         return;
       }
       // If there is a non-collapsed native selection, read from Lexical

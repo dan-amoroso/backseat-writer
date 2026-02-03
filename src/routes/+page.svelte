@@ -24,7 +24,11 @@
     $toggleTarget as toggleTarget,
   } from "$lib/nodes/TargetNode";
   import { browser } from "$app/environment";
-  import { selectionInfo as selectionInfoStore } from "$lib/selectionInfo";
+  import {
+    selectionInfo as selectionInfoStore,
+    selectionMenuPinned,
+    selectionMenuSuppressed,
+  } from "$lib/selectionInfo";
 
   const writingTypes = ["Blog Post", "Essay"];
   let selectedWritingType = writingTypes[0];
@@ -194,6 +198,15 @@
     selectionMenuText = "";
   }
 
+  function clearSelectionMenu() {
+    selectionInfoStore.set(null);
+    selectionMenuPinned.set(false);
+    selectionMenuSuppressed.set(true);
+    if (browser) {
+      window.getSelection()?.removeAllRanges();
+    }
+  }
+
   function handleSelectionComment(event: CustomEvent<{ text: string }>) {
     const editor = get(editorInstance);
     if (!editor) return;
@@ -205,7 +218,7 @@
 
     addComment(targetId, "You", event.detail.text);
 
-    selectionInfoStore.set(null);
+    clearSelectionMenu();
   }
 
   function handleSelectionFeedback() {
@@ -221,11 +234,11 @@
       `[Feedback requested on: "${selectionMenuText.slice(0, 80)}${selectionMenuText.length > 80 ? "..." : ""}"]`,
     );
 
-    selectionInfoStore.set(null);
+    clearSelectionMenu();
   }
 
   function handleSelectionDismiss() {
-    selectionInfoStore.set(null);
+    clearSelectionMenu();
   }
 </script>
 
@@ -324,10 +337,11 @@
       {#if selectionMenuTop != null && selectionMenuText}
         <SelectionActionMenu
           top={selectionMenuTop}
-          selectionText={selectionMenuText}
           on:comment={handleSelectionComment}
           on:feedback={handleSelectionFeedback}
           on:dismiss={handleSelectionDismiss}
+          on:pin={() => selectionMenuPinned.set(true)}
+          on:unpin={() => selectionMenuPinned.set(false)}
         />
       {/if}
       {#each $comments as comment (comment.id)}
