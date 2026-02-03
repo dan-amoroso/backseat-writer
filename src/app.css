@@ -245,6 +245,19 @@
     border-color 0.2s ease;
 }
 
+.editor mark[data-target-ids],
+.editor mark[data-target-id] {
+  background: transparent;
+  color: inherit;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  border-bottom: 2px solid transparent;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
 .bsw-target[data-has-comments="true"] {
   background: rgba(212, 160, 84, 0.12);
   border-bottom-color: rgba(212, 160, 84, 0.35);
@@ -255,8 +268,25 @@
   border-bottom-color: #d4a054;
 }
 
+.editor mark[data-target-ids][data-has-comments="true"],
+.editor mark[data-target-id][data-has-comments="true"] {
+  background: rgba(212, 160, 84, 0.12);
+  border-bottom-color: rgba(212, 160, 84, 0.35);
+}
+
+.editor mark[data-target-ids][data-active="true"],
+.editor mark[data-target-id][data-active="true"] {
+  background: rgba(212, 160, 84, 0.22);
+  border-bottom-color: #d4a054;
+}
+
 .editor ::selection {
   background: rgba(212, 160, 84, 0.2);
+}
+
+.editor mark {
+  background: transparent;
+  color: inherit;
 }
 
 /* ── File menu ── */
