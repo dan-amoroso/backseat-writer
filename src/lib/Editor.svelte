@@ -35,8 +35,10 @@
     $createTargetNode as createTargetNode,
     $isTargetNode as isTargetNode,
     $toggleTarget as toggleTarget,
+    $removeTargetById as removeTargetById,
     TOGGLE_TARGET_COMMAND,
   } from "$lib/nodes/TargetNode";
+  import { comments } from "$lib/comments";
   import editorThemeClasses from "$lib/editorThemeClasses";
   import { get, writable } from "svelte/store";
   import { loadJson, saveJson } from "$lib/storage";
@@ -49,20 +51,23 @@
 
   const STORAGE_KEY = "editor-state";
 
+  let targetIdQueue: string[][] = [];
+
   const TARGET: TextMatchTransformer = {
     dependencies: [TargetNode],
     export: (node, exportChildren) => {
       if (!isTargetNode(node)) {
         return null;
       }
+      targetIdQueue.push(node.getTargetIds());
       return `==${exportChildren(node)}==`;
     },
     importRegExp: /(?:==)(.+?)(?:==)/,
     regExp: /(?:==)(.+?)(?:==)$/,
     replace: (textNode, match) => {
       const [, text] = match;
-      const targetId = crypto.randomUUID();
-      const targetNode = createTargetNode([targetId]);
+      const ids = targetIdQueue.shift() || [crypto.randomUUID()];
+      const targetNode = createTargetNode(ids);
       const targetTextNode = createTextNode(text);
       targetTextNode.setFormat(textNode.getFormat());
       targetNode.append(targetTextNode);
@@ -95,6 +100,7 @@
 
   function getMarkdownFromEditor() {
     if (!editor) return "";
+    targetIdQueue = [];
     return editor
       .getEditorState()
       .read(() => convertToMarkdownString(allTransformers));
@@ -200,7 +206,11 @@
           // Track selection for the action menu
           editorState.read(() => {
             if (mode === "markdown") {
-              markdownText = getRoot().getTextContent();
+              const root = getRoot();
+              markdownText = root
+                .getChildren()
+                .map((c) => c.getTextContent())
+                .join("\n");
             }
             if (get(selectionMenuSuppressed) || !editorRef) {
               return;
@@ -306,6 +316,29 @@
       markdownShortcutsCleanup = null;
     } else {
       applyMarkdownToEditor(markdownText);
+      // Remove targets whose IDs no longer have comments
+      const activeTargetIds = new Set(get(comments).map((c) => c.targetId));
+      editor.update(() => {
+        const orphanIds = new Set<string>();
+        const root = getRoot();
+        root.getChildren().forEach(function walk(node) {
+          if (isTargetNode(node)) {
+            for (const id of node.getTargetIds()) {
+              if (!activeTargetIds.has(id)) {
+                orphanIds.add(id);
+              }
+            }
+          }
+          if ("getChildren" in node && typeof node.getChildren === "function") {
+            (node.getChildren() as import("lexical").LexicalNode[]).forEach(
+              walk,
+            );
+          }
+        });
+        for (const id of orphanIds) {
+          removeTargetById(id);
+        }
+      });
     }
     lastMode = mode;
   }

@@ -5,6 +5,7 @@
     $getRoot as getRoot,
     $createParagraphNode as createParagraphNode,
   } from "lexical";
+  import { $removeTargetById as removeTargetById } from "$lib/nodes/TargetNode";
   import Editor from "$lib/Editor.svelte";
   import { editorInstance } from "$lib/editorInstance";
   import FileMenu from "$lib/FileMenu.svelte";
@@ -27,7 +28,20 @@
     openFile,
   } from "$lib/fileIO";
   import { extractTextFromNodes, runPipeline } from "$lib/pipeline";
-  import type { PipelineResult, ApplyResult } from "$lib/pipeline";
+  import type {
+    PipelineResult,
+    ApplyResult,
+    ProcessorDefinition,
+  } from "$lib/pipeline";
+  import {
+    processors,
+    addProcessor as addNewProcessor,
+    updateProcessor,
+    removeProcessor,
+  } from "$lib/processors";
+  import type { Processor } from "$lib/processors";
+  import ProcessorsSidebar from "$lib/ProcessorsSidebar.svelte";
+  import ProcessorModal from "$lib/ProcessorModal.svelte";
   import { applyPipelineResults } from "$lib/applyPipelineResults";
   import {
     TOGGLE_TARGET_COMMAND,
@@ -51,6 +65,36 @@
   let feedbackApplyResult: ApplyResult | null = null;
   let editorMode: "rich" | "markdown" = "rich";
   let editorComponent: Editor;
+  let editingProcessor: Processor | null = null;
+
+  function handleProcessorSelect(event: CustomEvent<Processor>) {
+    editingProcessor = event.detail;
+  }
+
+  function handleProcessorAdd() {
+    editingProcessor = addNewProcessor();
+  }
+
+  function handleProcessorSave(event: CustomEvent<Processor>) {
+    updateProcessor(event.detail);
+    editingProcessor = null;
+  }
+
+  function handleProcessorDelete(event: CustomEvent<string>) {
+    removeProcessor(event.detail);
+    editingProcessor = null;
+  }
+
+  function processorsToDefinitions(procs: Processor[]): ProcessorDefinition[] {
+    return procs.map((p) => ({
+      id: p.id,
+      name: p.name,
+      author: p.author,
+      bindings: [{ provider: p.provider, model: p.model }],
+      systemPrompt: p.personality,
+      includeEvaluation: p.includeEvaluation,
+    }));
+  }
 
   async function getFeedback() {
     feedbackLoading = true;
@@ -86,6 +130,7 @@
         selectedWritingType,
         apiKeys,
         verifiedKeys,
+        processorsToDefinitions(get(processors)),
       );
       pipelineResults = result;
 
@@ -306,7 +351,21 @@
 
   function handleDeleteComment(id: string) {
     clearActiveTargets();
+    const comment = get(comments).find((c) => c.id === id);
     removeComment(id);
+    if (comment) {
+      const editor = get(editorInstance);
+      if (editor) {
+        const remainingTargetIds = new Set(
+          get(comments).map((c) => c.targetId),
+        );
+        if (!remainingTargetIds.has(comment.targetId)) {
+          editor.update(() => {
+            removeTargetById(comment.targetId);
+          });
+        }
+      }
+    }
   }
 
   function handleSelectionFeedback() {
@@ -331,6 +390,11 @@
 </script>
 
 <main>
+  <ProcessorsSidebar
+    processors={$processors}
+    on:select={handleProcessorSelect}
+    on:add={handleProcessorAdd}
+  />
   <div class="workspace">
     <header class="header">
       <div class="header-left">
@@ -520,17 +584,26 @@
         {/each}
       </aside>
     </div>
+    <BottomToolbar
+      {wordCount}
+      {feedbackLoading}
+      {pipelineResults}
+      {feedbackApplyResult}
+      {feedbackError}
+      {editorStateJson}
+    />
   </div>
-  <BottomToolbar
-    {wordCount}
-    {feedbackLoading}
-    {pipelineResults}
-    {feedbackApplyResult}
-    {feedbackError}
-    {editorStateJson}
-  />
 </main>
 
 {#if settingsOpen}
   <SettingsModal on:close={() => (settingsOpen = false)} />
+{/if}
+
+{#if editingProcessor}
+  <ProcessorModal
+    processor={editingProcessor}
+    on:save={handleProcessorSave}
+    on:delete={handleProcessorDelete}
+    on:close={() => (editingProcessor = null)}
+  />
 {/if}

@@ -4,6 +4,7 @@
   import { validateKey } from "$lib/perplexity";
   import { validateKey as validateOpenAIKey } from "$lib/openai";
   import { validateKey as validateGeminiKey } from "$lib/gemini";
+  import { validateKey as validateMistralKey } from "$lib/mistral";
   import posthog from "posthog-js";
 
   const dispatch = createEventDispatcher<{ close: void }>();
@@ -16,7 +17,7 @@
     { name: "OpenAI", placeholder: "sk-...", canValidate: true },
     { name: "Perplexity", placeholder: "pplx-...", canValidate: true },
     { name: "Anthropic", placeholder: "sk-ant-...", canValidate: false },
-    { name: "Mistral", placeholder: "mk-...", canValidate: false },
+    { name: "Mistral", placeholder: "mk-...", canValidate: true },
     { name: "Zen", placeholder: "zen-...", canValidate: false },
     { name: "Gemini", placeholder: "AIza...", canValidate: true },
   ];
@@ -52,7 +53,9 @@
           ? await validateOpenAIKey(value)
           : provider === "Gemini"
             ? await validateGeminiKey(value)
-            : await validateKey(value);
+            : provider === "Mistral"
+              ? await validateMistralKey(value)
+              : await validateKey(value);
       if (apiKeys[provider] === value) {
         if (result.valid) {
           keyStatus[provider] = "valid";
@@ -85,7 +88,9 @@
         ? await validateOpenAIKey(value)
         : provider === "Gemini"
           ? await validateGeminiKey(value)
-          : await validateKey(value);
+          : provider === "Mistral"
+            ? await validateMistralKey(value)
+            : await validateKey(value);
     if (apiKeys[provider] === value) {
       if (result.valid) {
         keyStatus[provider] = "valid";

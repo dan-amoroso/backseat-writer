@@ -346,3 +346,28 @@ export function $toggleTarget(targetId: string | null): void {
     targetNode.append(node);
   }
 }
+
+export function $removeTargetById(targetId: string): void {
+  const root = $getRoot();
+  const walk = (node: LexicalNode) => {
+    if ($isTargetNode(node)) {
+      const ids = node.getTargetIds().filter((id) => id !== targetId);
+      if (ids.length === 0) {
+        const children = node.getChildren();
+        for (const child of children) {
+          node.insertBefore(child);
+        }
+        node.remove();
+      } else {
+        node.setTargetIds(ids);
+      }
+      return;
+    }
+    if ($isElementNode(node)) {
+      for (const child of node.getChildren()) {
+        walk(child);
+      }
+    }
+  };
+  walk(root);
+}
