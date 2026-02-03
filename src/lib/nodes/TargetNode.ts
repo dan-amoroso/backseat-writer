@@ -1,12 +1,14 @@
 import {
   ElementNode,
   $applyNodeReplacement,
+  $createRangeSelection,
   $getRoot,
   $getSelection,
   $isRangeSelection,
   $isElementNode,
   $isTextNode,
   $createTextNode,
+  $setSelection,
   createCommand,
   type DOMConversionMap,
   type DOMConversionOutput,
@@ -193,39 +195,96 @@ export function createTarget(content: string): TargetId | null {
     return null;
   }
 
+  const normalizedContent = stripInlineMarkdown(content);
+
   const root = $getRoot();
   const textNodes = root.getAllTextNodes();
-  let matchNode: LexicalNode | null = null;
-  let matchIndex = -1;
+  if (textNodes.length === 0) {
+    return null;
+  }
+
+  const ranges: Array<{ node: LexicalNode; start: number; end: number }> = [];
+  let fullText = "";
+  let lastTopLevel: LexicalNode | null = null;
 
   for (const node of textNodes) {
     if (!$isTextNode(node)) {
       continue;
     }
+    const topLevel = node.getTopLevelElementOrThrow();
+    if (lastTopLevel && topLevel !== lastTopLevel) {
+      fullText += "\n";
+    }
+    const start = fullText.length;
     const text = node.getTextContent();
-    const index = text.indexOf(content);
-    if (index === -1) {
-      continue;
-    }
-    if (text.indexOf(content, index + 1) !== -1) {
-      return null;
-    }
-    if (matchNode) {
-      return null;
-    }
-    // Allow nodes already inside a target — we'll add the new ID
-    matchNode = node;
-    matchIndex = index;
+    fullText += text;
+    const end = fullText.length;
+    ranges.push({ node, start, end });
+    lastTopLevel = topLevel;
   }
 
-  if (!matchNode || matchIndex === -1 || !$isTextNode(matchNode)) {
+  let matchText = content;
+  let matchIndex = fullText.indexOf(content);
+  if (matchIndex === -1 && normalizedContent !== content) {
+    matchText = normalizedContent;
+    matchIndex = fullText.indexOf(normalizedContent);
+  }
+  if (matchIndex === -1) {
+    return null;
+  }
+  if (fullText.indexOf(matchText, matchIndex + 1) !== -1) {
+    return null;
+  }
+
+  const matchEnd = matchIndex + matchText.length;
+  let startNode: LexicalNode | null = null;
+  let endNode: LexicalNode | null = null;
+  let startOffset = -1;
+  let endOffset = -1;
+
+  for (const range of ranges) {
+    if (startNode === null && range.end > matchIndex) {
+      startNode = range.node;
+      startOffset = matchIndex - range.start;
+    }
+    if (range.end >= matchEnd) {
+      endNode = range.node;
+      endOffset = matchEnd - range.start;
+      break;
+    }
+  }
+
+  if (
+    !startNode ||
+    !endNode ||
+    startOffset < 0 ||
+    endOffset < 0 ||
+    !$isTextNode(startNode) ||
+    !$isTextNode(endNode)
+  ) {
     return null;
   }
 
   const targetId = crypto.randomUUID();
-  matchNode.select(matchIndex, matchIndex + content.length);
+  const selection = $createRangeSelection();
+  selection.setTextNodeRange(startNode, startOffset, endNode, endOffset);
+  $setSelection(selection);
   $toggleTarget(targetId);
   return targetId;
+}
+
+function stripInlineMarkdown(input: string): string {
+  let text = input;
+  text = text.replace(/\\([\\`*_~[\]()!])/g, "$1");
+  text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1");
+  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+  text = text.replace(/`([^`]+)`/g, "$1");
+  text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
+  text = text.replace(/__([^_]+)__/g, "$1");
+  text = text.replace(/\*([^*]+)\*/g, "$1");
+  text = text.replace(/_([^_]+)_/g, "$1");
+  text = text.replace(/~~([^~]+)~~/g, "$1");
+  return text;
 }
 
 export const TOGGLE_TARGET_COMMAND: LexicalCommand<string | null> =

@@ -9,11 +9,12 @@ export function applyPipelineResults(
 ): ApplyResult {
   let commentsCreated = 0;
   let commentsFailed = 0;
+  const failedComments: PipelineResult["results"][number]["comments"] = [];
 
   const allComments = pipelineResult.results.flatMap((r) => r.comments);
 
   if (allComments.length === 0) {
-    return { commentsCreated, commentsFailed };
+    return { commentsCreated, commentsFailed, failedComments };
   }
 
   editor.update(
@@ -25,11 +26,12 @@ export function applyPipelineResults(
           commentsCreated++;
         } else {
           commentsFailed++;
+          failedComments.push(comment);
         }
       }
     },
     { discrete: true },
   );
 
-  return { commentsCreated, commentsFailed };
+  return { commentsCreated, commentsFailed, failedComments };
 }

@@ -125,7 +125,7 @@
     selectedWritingType = $settings.writingType || writingTypes[0];
   }
 
-  $: if (browser && $comments) {
+  function syncCommentMarks() {
     const referencedIds = new Set($comments.map((c) => c.targetId));
     const marks = document.querySelectorAll("mark[data-target-ids]");
     for (const mark of marks) {
@@ -137,6 +137,10 @@
         mark.removeAttribute("data-has-comments");
       }
     }
+  }
+
+  $: if (browser && $comments) {
+    requestAnimationFrame(() => syncCommentMarks());
   }
 
   let commentOffsets: Record<string, number> = {};
@@ -219,6 +223,18 @@
     addComment(targetId, "You", event.detail.text);
 
     clearSelectionMenu();
+  }
+
+  function clearActiveTargets() {
+    const marks = document.querySelectorAll("mark[data-target-ids]");
+    for (const mark of marks) {
+      mark.removeAttribute("data-active");
+    }
+  }
+
+  function handleDeleteComment(id: string) {
+    clearActiveTargets();
+    removeComment(id);
   }
 
   function handleSelectionFeedback() {
@@ -352,23 +368,27 @@
             ? `top:${commentOffsets[comment.id]}px`
             : ""}
         >
-          <CommentBubble {comment} on:delete={(e) => removeComment(e.detail)} />
+          <CommentBubble
+            {comment}
+            on:delete={(e) => handleDeleteComment(e.detail)}
+          />
         </div>
       {/each}
     </aside>
   </div>
 </main>
 
-<FeedbackWidget
-  loading={feedbackLoading}
-  results={pipelineResults}
-  applyResult={feedbackApplyResult}
-  error={feedbackError}
-/>
-
-{#if editorStateJson}
-  <DebugWidget {editorStateJson} />
-{/if}
+<div class="widget-dock">
+  <FeedbackWidget
+    loading={feedbackLoading}
+    results={pipelineResults}
+    applyResult={feedbackApplyResult}
+    error={feedbackError}
+  />
+  {#if editorStateJson}
+    <DebugWidget {editorStateJson} />
+  {/if}
+</div>
 
 {#if settingsOpen}
   <SettingsModal on:close={() => (settingsOpen = false)} />

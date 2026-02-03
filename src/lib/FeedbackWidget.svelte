@@ -93,6 +93,28 @@
               {applyResult.commentsCreated} comments applied{#if applyResult.commentsFailed > 0},
                 {applyResult.commentsFailed} could not be matched to text{/if}
             </div>
+            {#if applyResult.failedComments.length > 0}
+              <details class="feedback-unmatched">
+                <summary class="feedback-unmatched-summary">
+                  View unmatched comments
+                </summary>
+                <div class="feedback-unmatched-list">
+                  {#each applyResult.failedComments as comment}
+                    <article class="feedback-unmatched-item">
+                      <header class="feedback-unmatched-header">
+                        <span class="feedback-unmatched-author"
+                          >{comment.author}</span
+                        >
+                      </header>
+                      <p class="feedback-unmatched-target">
+                        {comment.targetText}
+                      </p>
+                      <p class="feedback-unmatched-body">{comment.body}</p>
+                    </article>
+                  {/each}
+                </div>
+              </details>
+            {/if}
           {/if}
           {#each results.results as result}
             <section class="feedback-processor-section">

@@ -156,7 +156,7 @@
 
           // Track selection for the action menu
           editorState.read(() => {
-            if (get(selectionMenuSuppressed)) {
+            if (get(selectionMenuSuppressed) || !editorRef) {
               return;
             }
             const selection = getSelection();
@@ -168,6 +168,9 @@
               const nativeSelection = window.getSelection();
               if (nativeSelection && nativeSelection.rangeCount > 0) {
                 const range = nativeSelection.getRangeAt(0);
+                if (!editorRef.contains(range.commonAncestorContainer)) {
+                  return;
+                }
                 const rect = range.getBoundingClientRect();
                 selectionInfo.set({
                   text: selection.getTextContent(),
@@ -219,6 +222,12 @@
           selection.getTextContent().trim().length > 0
         ) {
           const range = nativeSelection.getRangeAt(0);
+          if (
+            !editorRef ||
+            !editorRef.contains(range.commonAncestorContainer)
+          ) {
+            return;
+          }
           const rect = range.getBoundingClientRect();
           selectionInfo.set({
             text: selection.getTextContent(),

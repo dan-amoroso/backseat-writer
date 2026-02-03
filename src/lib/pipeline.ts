@@ -41,6 +41,7 @@ export interface PipelineResult {
 export interface ApplyResult {
   commentsCreated: number;
   commentsFailed: number;
+  failedComments: ProcessorComment[];
 }
 
 // ── Hardcoded processors ──
