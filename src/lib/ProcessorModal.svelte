@@ -19,6 +19,7 @@
     "Gemini",
     "Mistral",
     "Qwen",
+    "Grok",
   ];
 
   let name = processor.name;

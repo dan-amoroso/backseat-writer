@@ -12,6 +12,9 @@ import { validateKey as validateMistralKey } from "$lib/mistral";
 import { chatCompletion as qwenChatCompletion } from "$lib/qwen";
 import { listModels as listQwenModels } from "$lib/qwen";
 import { validateKey as validateQwenKey } from "$lib/qwen";
+import { chatCompletion as grokChatCompletion } from "$lib/grok";
+import { listModels as listGrokModels } from "$lib/grok";
+import { validateKey as validateGrokKey } from "$lib/grok";
 
 const PERPLEXITY_MODELS = [
   "sonar-deep-research",
@@ -22,7 +25,13 @@ const PERPLEXITY_MODELS = [
   "r1-1776",
 ];
 
-export type Provider = "OpenAI" | "Perplexity" | "Gemini" | "Mistral" | "Qwen";
+export type Provider =
+  | "OpenAI"
+  | "Perplexity"
+  | "Gemini"
+  | "Mistral"
+  | "Qwen"
+  | "Grok";
 
 export type ProviderValidationResult =
   | { valid: true }
@@ -117,6 +126,23 @@ export const providerModules = {
     validateKey: validateQwenKey,
     generateText: async ({ apiKey, model, systemPrompt, userContent }) => {
       const result = await qwenChatCompletion(apiKey, {
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+      });
+      return result.choices?.[0]?.message?.content || "";
+    },
+  },
+  Grok: {
+    id: "Grok",
+    placeholder: "xai-...",
+    canValidate: true,
+    listModels: listGrokModels,
+    validateKey: validateGrokKey,
+    generateText: async ({ apiKey, model, systemPrompt, userContent }) => {
+      const result = await grokChatCompletion(apiKey, {
         model,
         messages: [
           { role: "system", content: systemPrompt },

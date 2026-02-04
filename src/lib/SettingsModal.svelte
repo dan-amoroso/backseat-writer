@@ -14,6 +14,7 @@
     { name: "OpenAI", placeholder: "sk-...", canValidate: true },
     { name: "Perplexity", placeholder: "pplx-...", canValidate: true },
     { name: "Qwen", placeholder: "sk-...", canValidate: true },
+    { name: "Grok", placeholder: "xai-...", canValidate: true },
     { name: "Anthropic", placeholder: "sk-ant-...", canValidate: false },
     { name: "Mistral", placeholder: "mk-...", canValidate: true },
     { name: "Zen", placeholder: "zen-...", canValidate: false },

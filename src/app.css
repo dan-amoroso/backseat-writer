@@ -77,6 +77,7 @@
 /* ── Editor theme ── */
 
 .editor-container {
+  position: relative;
   background: #1c1b19;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
@@ -95,6 +96,59 @@
   line-height: 1.75;
   caret-color: #d4a054;
   tab-size: 4;
+}
+
+/* ── Drag handle ── */
+
+.drag-handle {
+  position: absolute;
+  left: 8px;
+  z-index: 10;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  color: #d4a054;
+  cursor: grab;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition:
+    color 0.15s ease-out,
+    background 0.15s ease-out;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.drag-handle:hover {
+  opacity: 1;
+  color: #d4a054;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.drag-handle-dragging {
+  cursor: grabbing;
+  opacity: 1;
+  color: #d4a054;
+}
+
+.drag-drop-indicator {
+  position: absolute;
+  left: 36px;
+  right: 36px;
+  height: 2px;
+  background: #d4a054;
+  z-index: 10;
+  pointer-events: none;
+  border-radius: 1px;
+  box-shadow: 0 0 6px rgba(212, 160, 84, 0.4);
+}
+
+.drag-source {
+  opacity: 0.35;
+  transition: opacity 0.15s ease-out;
 }
 
 .bsw-paragraph {

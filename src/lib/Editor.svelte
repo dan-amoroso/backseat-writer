@@ -43,6 +43,7 @@
   import { get, writable } from "svelte/store";
   import { loadJson, saveJson } from "$lib/storage";
   import { editorInstance } from "$lib/editorInstance";
+  import DragHandle from "$lib/DragHandle.svelte";
   import {
     selectionInfo,
     selectionMenuPinned,
@@ -382,4 +383,7 @@
 
 <div class="editor-container">
   <div class="editor" bind:this={editorRef} contenteditable="true"></div>
+  {#if editor && editorRef}
+    <DragHandle {editor} editorRootEl={editorRef} />
+  {/if}
 </div>
