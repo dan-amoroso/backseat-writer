@@ -1,6 +1,7 @@
 <script lang="ts">
   import "../app.css";
   import { get } from "svelte/store";
+  import { onMount } from "svelte";
   import {
     $getRoot as getRoot,
     $createParagraphNode as createParagraphNode,
@@ -19,8 +20,9 @@
     removeComment,
     deleteAllComments,
   } from "$lib/comments";
+  import type { Comment } from "$lib/comments";
   import type { Writable } from "svelte/store";
-  import { settings, setSetting } from "$lib/storage";
+  import { settings, setSetting, setApiKey } from "$lib/storage";
   import {
     serializeDocument,
     deserializeDocument,
@@ -67,6 +69,131 @@
   let editorMode: "rich" | "markdown" = "rich";
   let editorComponent: Editor;
   let editingProcessor: Processor | null = null;
+  let shareLabel = "Share";
+
+  function decodeBase64Url(value: string): string | null {
+    try {
+      const padded = value.replace(/-/g, "+").replace(/_/g, "/");
+      const padLength = (4 - (padded.length % 4)) % 4;
+      const withPadding = padded + "=".repeat(padLength);
+      return atob(withPadding);
+    } catch {
+      return null;
+    }
+  }
+
+  function parseJsonParam<T>(value: string): T | null {
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      const decoded = decodeBase64Url(value);
+      if (!decoded) return null;
+      try {
+        return JSON.parse(decoded) as T;
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  function parseTextParam(value: string): string {
+    const decoded = decodeBase64Url(value);
+    return decoded ?? value;
+  }
+
+  function encodeBase64Url(value: string): string {
+    const bytes = new TextEncoder().encode(value);
+    let binary = "";
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+    return btoa(binary)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
+  }
+
+  onMount(() => {
+    if (!browser) return;
+    const params = new URLSearchParams(window.location.search);
+    const hasEditorState = params.has("editorState");
+    const hasText = params.has("text");
+    const hasComments = params.has("comments");
+    const hasApiKeys =
+      params.has("apiKeys") ||
+      params.has("openaiKey") ||
+      params.has("perplexityKey");
+
+    if (!hasEditorState && !hasText && !hasComments && !hasApiKeys) {
+      return;
+    }
+
+    if (hasApiKeys) {
+      const apiKeysParam = params.get("apiKeys");
+      if (apiKeysParam) {
+        const parsed = parseJsonParam<Record<string, string>>(apiKeysParam);
+        if (parsed) {
+          for (const [provider, value] of Object.entries(parsed)) {
+            if (value) {
+              setApiKey(provider, value);
+            }
+          }
+        }
+      }
+      const openaiKey = params.get("openaiKey");
+      if (openaiKey) {
+        setApiKey("openai", parseTextParam(openaiKey));
+      }
+      const perplexityKey = params.get("perplexityKey");
+      if (perplexityKey) {
+        setApiKey("perplexity", parseTextParam(perplexityKey));
+      }
+    }
+
+    const applyEditorContent = (): boolean => {
+      if (hasEditorState) {
+        const raw = params.get("editorState");
+        if (raw) {
+          const parsed = parseJsonParam<Record<string, unknown>>(raw);
+          if (parsed) {
+            const success = editorComponent?.setEditorStateFromJson(
+              JSON.stringify(parsed),
+            );
+            if (success) return true;
+          }
+        }
+      }
+      if (hasText) {
+        const text = params.get("text");
+        if (text != null) {
+          editorComponent?.setPlainTextContent(parseTextParam(text));
+          return true;
+        }
+      }
+      return false;
+    };
+
+    let editorInitialized = applyEditorContent();
+    if (!editorInitialized && (hasEditorState || hasText)) {
+      const unsubscribe = editorInstance.subscribe((editor) => {
+        if (!editor) return;
+        editorInitialized = applyEditorContent();
+        unsubscribe();
+      });
+    }
+
+    if (hasComments) {
+      const raw = params.get("comments");
+      if (raw) {
+        const parsed = parseJsonParam<Comment[]>(raw);
+        if (parsed && Array.isArray(parsed)) {
+          comments.set(parsed);
+        }
+      }
+    } else if (editorInitialized) {
+      deleteAllComments();
+    }
+  });
 
   function handleProcessorSelect(event: CustomEvent<Processor>) {
     editingProcessor = event.detail;
@@ -171,6 +298,27 @@
       await navigator.clipboard.writeText(text);
       copyLabel = "Copied!";
       setTimeout(() => (copyLabel = "Copy"), 1500);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function copyShareLink() {
+    try {
+      const url = new URL(window.location.href);
+      const params = new URLSearchParams();
+      const editorState = get(editorStateJson);
+      if (editorState && editorState !== "{}") {
+        params.set("editorState", encodeBase64Url(editorState));
+      }
+      const commentList = get(comments);
+      if (commentList.length > 0) {
+        params.set("comments", encodeBase64Url(JSON.stringify(commentList)));
+      }
+      url.search = params.toString();
+      await navigator.clipboard.writeText(url.toString());
+      shareLabel = "Copied!";
+      setTimeout(() => (shareLabel = "Share"), 1500);
     } catch {
       // ignore
     }
@@ -463,6 +611,25 @@
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
           </svg>
           {copyLabel}
+        </button>
+        <button class="share-btn" on:click={copyShareLink}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
+            <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
+          </svg>
+          {shareLabel}
         </button>
       </div>
       <div class="header-center">

@@ -98,6 +98,22 @@
     editor?.dispatchCommand(REDO_COMMAND, undefined);
   }
 
+  export function setPlainTextContent(text: string) {
+    applyPlainTextToEditor(text);
+  }
+
+  export function setEditorStateFromJson(json: string): boolean {
+    if (!editor) return false;
+    try {
+      const parsed = editor.parseEditorState(json);
+      editor.setEditorState(parsed);
+      editorStateJson.set(JSON.stringify(JSON.parse(json), null, 2));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function getMarkdownFromEditor() {
     if (!editor) return "";
     targetIdQueue = [];
