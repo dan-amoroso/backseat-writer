@@ -49,6 +49,10 @@
   import FormattingToolbar from "$lib/FormattingToolbar.svelte";
   import { applyPipelineResults } from "$lib/applyPipelineResults";
   import {
+    $convertToMarkdownString as convertToMarkdownString,
+    TRANSFORMERS as MARKDOWN_TRANSFORMERS,
+  } from "@lexical/markdown";
+  import {
     TOGGLE_TARGET_COMMAND,
     $toggleTarget as toggleTarget,
   } from "$lib/nodes/TargetNode";
@@ -355,10 +359,21 @@
 
   async function copyToClipboard() {
     try {
-      const state = JSON.parse(get(editorStateJson));
-      const text = extractTextFromNodes(state.root?.children || []).trim();
-      if (!text) return;
-      await navigator.clipboard.writeText(text);
+      const editor = get(editorInstance);
+      const markdown = editor
+        ? editor
+            .getEditorState()
+            .read(() => convertToMarkdownString(MARKDOWN_TRANSFORMERS))
+            .trim()
+        : "";
+      if (markdown) {
+        await navigator.clipboard.writeText(markdown);
+      } else {
+        const state = JSON.parse(get(editorStateJson));
+        const text = extractTextFromNodes(state.root?.children || []).trim();
+        if (!text) return;
+        await navigator.clipboard.writeText(text);
+      }
       copyLabel = "Copied!";
       setTimeout(() => (copyLabel = "Copy"), 1500);
     } catch {
@@ -840,7 +855,13 @@
               </svg>
             </button>
           </div>
-          <button class="copy-btn" on:click={copyToClipboard}>
+          <button
+            class="copy-btn"
+            on:click={copyToClipboard}
+            aria-label="Copy markdown"
+            title="Copy markdown"
+            type="button"
+          >
             <svg
               width="14"
               height="14"

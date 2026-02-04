@@ -8,7 +8,7 @@
   const DEMO_MARKDOWN = `
 ## Hi, this is Dan. I have been working on my writing
 
-> I aim for 1000 words per day, and building Backseat Writer has made it even more fun. It is a hobby text editor that uses AI as a soundingboard rather than producing your text. 
+> I aim for 1000 words per day, and building Backseat Writer has made it even more fun. It is a hobby text editor that uses AI as a sounding board rather than producing your text. 
 
 I want to expand it to where it will handle citations and sources, suggest clarifications and audience specific reactions.
 
@@ -31,18 +31,33 @@ Because how else to consume my free credits? :)
 
   const DEMO_COMMENTS: Comment[] = [
     {
-      id: "comment-demo-1",
-      targetId: "demo-target-1",
-      targetText: "AI as a soundingboard rather than producing your text.",
       author: "HN Snark",
-      body: "actually… this is just “chat with guardrails” unless you define what it won’t do and how you’ll detect it. Also: *soundingboard* is one word, but you probably knew that.",
+      body: "Claiming it's a 'sounding board' is fine, but evidence? Show us a before-and-after example where the AI feedback actually improved something, otherwise it's just hype.",
+      id: "comment-1770221230863",
+      targetId: "036bb3b1-0c8c-4691-89c4-9e951f0ddb6c",
+      targetText:
+        "It is a hobby text editor that uses AI as a sounding board rather than producing your text.",
     },
     {
-      id: "comment-demo-2",
-      targetId: "demo-target-2",
-      targetText: "Because how else to consume my free credits? :)",
       author: "HN Snark",
-      body: "actually, the free-credits bit is the most honest line here. But if that’s the hook, the rest needs sharper claims than “WIP” and “planning to”.",
+      body: "Dismissing this as obvious; every editor has non-AI features, so what's the novel angle? Lacks evidence of why your mix stands out.",
+      id: "comment-1770221230867",
+      targetId: "745fd38b-d5bc-47e2-9c3e-621a11d78bae",
+      targetText: "Processors don't necessarily need to be AI powered",
+    },
+    {
+      author: "HN Snark",
+      body: "BYOK and client-side is a start, but no mention of security audits or privacy guarantees—skeptical of trusting free credits without that.",
+      id: "comment-1770221230868",
+      targetId: "db758427-6f9e-47a4-93eb-bda746d57281",
+      targetText: "The app is BYOK at the moment, and it runs clientside only.",
+    },
+    {
+      author: "HN Snark",
+      body: "Cute, but this dismisses real questions about sustainability—once credits run out, what's the plan? Feels like short-term thinking.",
+      id: "comment-1770221230869",
+      targetId: "744df8ec-d05d-46d7-a7c3-0e5c9bc4f024",
+      targetText: "Because how else to consume my free credits? :)",
     },
   ];
 
