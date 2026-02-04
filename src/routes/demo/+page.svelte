@@ -15,7 +15,7 @@
                   format: 0,
                   mode: "normal",
                   style: "",
-                  text: "Hi, I am Dan, I am trying to improve my writing",
+                  text: "Hi, this is Dan. I've been working on my writing",
                   type: "text",
                   version: 1,
                 },
@@ -42,7 +42,7 @@
               format: 0,
               mode: "normal",
               style: "",
-              text: "I am trying to write every day: 1000 words. I am more of a technical writer as I work in tech, but I would like to expand into fiction too. This app is built to leverage AI but keep the human in the driving seat ",
+              text: "I am writing at least 1000 words every day. Building Backseat Writer makes it more fun. This app is built to leverage AI but keep the human in the driving seat, while the AI nags them. I'm expanding the app and would value your feedback (check the about page). ",
               type: "text",
               version: 1,
             },
@@ -81,7 +81,7 @@
                   format: 0,
                   mode: "normal",
                   style: "",
-                  text: "I plan to extend it, because it makes writing more fun for me, but I would love to hear opinions if you have time and feel like sharing.",
+                  text: "Please try Backseat Writer and tell me what's missing! Thanks in advance!",
                   type: "text",
                   version: 1,
                 },
@@ -195,5 +195,8 @@
   </header>
   <section class="about-body">
     <p>Loading the demo editor state.</p>
+    <p>
+      New here? Read the <a href="/about">About page</a> for context.
+    </p>
   </section>
 </main>

@@ -23,7 +23,6 @@
   import {
     registerMarkdownShortcuts,
     TRANSFORMERS,
-    $convertFromMarkdownString as convertFromMarkdownString,
     $convertToMarkdownString as convertToMarkdownString,
   } from "@lexical/markdown";
   import { ListNode, ListItemNode } from "@lexical/list";
@@ -58,13 +57,9 @@
   let editorRef: HTMLDivElement;
   let editor: ReturnType<typeof createEditor> | null = null;
   let cleanup: (() => void) | undefined;
-  let markdownText = "";
-  let lastMode: "rich" | "markdown" = "rich";
   let markdownShortcutsCleanup: (() => void) | null = null;
   let lastRichStateJson = "{}";
   let reconcileQueued = false;
-
-  export let mode: "rich" | "markdown" = "rich";
 
   export function undo() {
     editor?.dispatchCommand(UNDO_COMMAND, undefined);
@@ -103,15 +98,6 @@
       .read(() => convertToMarkdownString(allTransformers));
   }
 
-  function applyMarkdownToEditor(markdown: string) {
-    if (!editor) return;
-    editor.update(() => {
-      const root = getRoot();
-      root.clear();
-      convertFromMarkdownString(markdown, allTransformers, root);
-    });
-  }
-
   function applyPlainTextToEditor(text: string) {
     if (!editor) return;
     editor.update(() => {
@@ -129,7 +115,7 @@
   }
 
   function queueReconcileComments() {
-    if (!editor || mode !== "rich") return;
+    if (!editor) return;
     if (reconcileQueued) return;
     reconcileQueued = true;
     requestAnimationFrame(() => {
@@ -139,7 +125,7 @@
   }
 
   function reconcileCommentTargets() {
-    if (!editor || mode !== "rich") return;
+    if (!editor) return;
     const currentComments = get(comments);
     if (currentComments.length === 0) return;
     const idsToRemove: string[] = [];
@@ -273,19 +259,10 @@
           saveJson(STORAGE_KEY, json);
           const pretty = JSON.stringify(json, null, 2);
           editorStateJson.set(pretty);
-          if (mode === "rich") {
-            lastRichStateJson = pretty;
-          }
+          lastRichStateJson = pretty;
 
           // Track selection for the action menu
           editorState.read(() => {
-            if (mode === "markdown") {
-              const root = getRoot();
-              markdownText = root
-                .getChildren()
-                .map((c) => c.getTextContent())
-                .join("\n");
-            }
             if (get(selectionMenuSuppressed) || !editorRef) {
               return;
             }
@@ -317,9 +294,7 @@
               }
             }
           });
-          if (mode === "rich") {
-            queueReconcileComments();
-          }
+          queueReconcileComments();
         },
       ),
     );
@@ -390,43 +365,7 @@
     editorInstance.set(null);
   });
 
-  $: if (editor && mode !== lastMode) {
-    if (mode === "markdown") {
-      markdownText = getMarkdownFromEditor();
-      applyPlainTextToEditor(markdownText);
-      markdownShortcutsCleanup?.();
-      markdownShortcutsCleanup = null;
-    } else {
-      applyMarkdownToEditor(markdownText);
-      queueReconcileComments();
-      // Remove targets whose IDs no longer have comments
-      const activeTargetIds = new Set(get(comments).map((c) => c.targetId));
-      editor.update(() => {
-        const orphanIds = new Set<string>();
-        const root = getRoot();
-        root.getChildren().forEach(function walk(node) {
-          if (isTargetNode(node)) {
-            for (const id of node.getTargetIds()) {
-              if (!activeTargetIds.has(id)) {
-                orphanIds.add(id);
-              }
-            }
-          }
-          if ("getChildren" in node && typeof node.getChildren === "function") {
-            (node.getChildren() as import("lexical").LexicalNode[]).forEach(
-              walk,
-            );
-          }
-        });
-        for (const id of orphanIds) {
-          removeTargetById(id);
-        }
-      });
-    }
-    lastMode = mode;
-  }
-
-  $: if (editor && mode === "rich" && !markdownShortcutsCleanup) {
+  $: if (editor && !markdownShortcutsCleanup) {
     markdownShortcutsCleanup = registerMarkdownShortcuts(
       editor,
       allTransformers,

@@ -38,7 +38,7 @@
 >
   <button
     class="comment-dismiss"
-    on:click={() => {
+    on:click|stopPropagation={() => {
       onMouseLeave();
       dispatch("delete", comment.id);
     }}
@@ -106,7 +106,7 @@
 
   .comment-bubble:hover {
     border-color: rgba(86, 156, 214, 0.4);
-    background: rgba(86, 156, 214, 0.03);
+    background: #1c1b19;
   }
 
   .comment-author {

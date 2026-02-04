@@ -66,7 +66,6 @@
   let feedbackError = "";
   let pipelineResults: PipelineResult | null = null;
   let feedbackApplyResult: ApplyResult | null = null;
-  let editorMode: "rich" | "markdown" = "rich";
   let editorComponent: Editor;
   let editingProcessor: Processor | null = null;
   let mobileMenuOpen = false;
@@ -370,10 +369,7 @@
       const includeKeysInShare = await openShareDialog();
       const url = new URL(window.location.href);
       const params = new URLSearchParams();
-      const editorState =
-        editorMode === "markdown"
-          ? editorComponent?.getRichEditorStateJson?.() || get(editorStateJson)
-          : get(editorStateJson);
+      const editorState = get(editorStateJson);
       if (editorState && editorState !== "{}") {
         params.set("editorState", encodeBase64Url(editorState));
       }
@@ -708,7 +704,6 @@
   }
 
   function handleEditorHover(event: MouseEvent) {
-    if (editorMode !== "rich") return;
     const target = event.target as HTMLElement | null;
     if (!target) return;
     const mark = target.closest("mark[data-target-ids]");
@@ -725,7 +720,6 @@
   }
 
   function handleEditorHoverOut(event: MouseEvent) {
-    if (editorMode !== "rich") return;
     const target = event.target as HTMLElement | null;
     if (!target) return;
     const mark = target.closest("mark[data-target-ids]");
@@ -783,28 +777,6 @@
         <span class="mobile-word-count-label">
           {wordCount === 1 ? "word" : "words"}
         </span>
-      </div>
-      <div class="mobile-mode-toggle">
-        <div class="mode-toggle" role="group" aria-label="Editor mode">
-          <button
-            class="mode-toggle-button"
-            class:mode-toggle-button-active={editorMode === "rich"}
-            aria-pressed={editorMode === "rich"}
-            on:click={() => (editorMode = "rich")}
-            type="button"
-          >
-            Rich
-          </button>
-          <button
-            class="mode-toggle-button"
-            class:mode-toggle-button-active={editorMode === "markdown"}
-            aria-pressed={editorMode === "markdown"}
-            on:click={() => (editorMode = "markdown")}
-            type="button"
-          >
-            Markdown
-          </button>
-        </div>
       </div>
       <div class="mobile-header-links">
         <a class="about-link" href="/about">About</a>
@@ -901,28 +873,7 @@
           {shareLabel}
         </button>
       </div>
-      <div class="header-center">
-        <div class="mode-toggle" role="group" aria-label="Editor mode">
-          <button
-            class="mode-toggle-button"
-            class:mode-toggle-button-active={editorMode === "rich"}
-            aria-pressed={editorMode === "rich"}
-            on:click={() => (editorMode = "rich")}
-            type="button"
-          >
-            Rich
-          </button>
-          <button
-            class="mode-toggle-button"
-            class:mode-toggle-button-active={editorMode === "markdown"}
-            aria-pressed={editorMode === "markdown"}
-            on:click={() => (editorMode = "markdown")}
-            type="button"
-          >
-            Markdown
-          </button>
-        </div>
-      </div>
+      <div class="header-center"></div>
       <div class="header-controls">
         <label>
           What are we writing?
@@ -1194,11 +1145,7 @@
       on:mouseout={handleEditorHoverOut}
     >
       <div class="editor-pane">
-        <Editor
-          bind:this={editorComponent}
-          bind:editorStateJson
-          mode={editorMode}
-        />
+        <Editor bind:this={editorComponent} bind:editorStateJson />
       </div>
       <aside class="comments-pane">
         {#if selectionMenuTop != null && selectionMenuText}

@@ -1777,7 +1777,7 @@ select:focus {
 }
 
 .help-callout-feedback {
-  top: 6%;
+  top: 4%;
   right: 22%;
 }
 
@@ -1787,7 +1787,7 @@ select:focus {
 }
 
 .help-callout-comments {
-  top: 30%;
+  top: 22%;
   right: 28%;
 }
 

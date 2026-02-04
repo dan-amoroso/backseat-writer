@@ -8,6 +8,7 @@
   import type { Processor } from "$lib/processors";
   import DebugWidget from "$lib/DebugWidget.svelte";
   import FeedbackWidget from "$lib/FeedbackWidget.svelte";
+  import { settings } from "$lib/storage";
 
   export let wordCount: number;
   export let processors: Processor[] = [];
@@ -16,6 +17,14 @@
   export let feedbackApplyResult: ApplyResult | null = null;
   export let feedbackError: string = "";
   export let editorStateJson: Writable<string> | null = null;
+  let configuredProcessors: Processor[] = [];
+
+  $: configuredProcessors = processors.filter((processor) => {
+    if (!processor.active) return false;
+    const apiKeys = $settings?.apiKeys ?? {};
+    const key = apiKeys[processor.provider];
+    return typeof key === "string" && key.trim().length > 0;
+  });
 
   function getResultForProcessor(id: string) {
     return pipelineResults?.results.find((r) => r.processorId === id) ?? null;
@@ -38,7 +47,7 @@
     <span class="word-count-label">{wordCount === 1 ? "word" : "words"}</span>
   </span>
   <div class="bottom-toolbar-center">
-    {#each processors as processor (processor.id)}
+    {#each configuredProcessors as processor (processor.id)}
       <FeedbackWidget
         name={processor.name}
         loading={feedbackLoading}
