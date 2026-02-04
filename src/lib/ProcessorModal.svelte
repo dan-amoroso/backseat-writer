@@ -11,6 +11,7 @@
     save: Processor;
     delete: string;
     close: void;
+    openSettings: void;
   }>();
 
   const providers: Provider[] = [
@@ -32,10 +33,12 @@
   let availableModels: string[] = [];
   let modelsLoading = false;
   let modelsError = "";
+  let noKeyConfigured = false;
 
   async function fetchModels(p: Provider) {
     modelsLoading = true;
     modelsError = "";
+    noKeyConfigured = false;
     availableModels = [];
 
     const apiKeys = $settings.apiKeys || {};
@@ -43,6 +46,7 @@
 
     if (!key) {
       modelsError = `No API key configured for ${p}`;
+      noKeyConfigured = true;
       modelsLoading = false;
       return;
     }
@@ -101,10 +105,10 @@
   on:click={onBackdropClick}
   on:keydown={onKeydown}
 >
-  <div class="processor-modal" role="dialog" aria-label="Edit Processor">
+  <div class="processor-modal" role="dialog" aria-label="Edit Persona">
     <div class="settings-header">
       <div class="settings-header-left">
-        <h2>Edit Processor</h2>
+        <h2>Edit Persona</h2>
       </div>
       <button
         class="settings-close"
@@ -134,7 +138,7 @@
               type="text"
               class="processor-modal-input"
               bind:value={name}
-              placeholder="Processor name"
+              placeholder="Persona name"
             />
           </label>
         </fieldset>
@@ -146,7 +150,7 @@
               class="processor-modal-textarea"
               bind:value={personality}
               rows="6"
-              placeholder="System prompt for this processor..."
+              placeholder="System prompt for this persona..."
             ></textarea>
           </label>
         </fieldset>
@@ -191,7 +195,18 @@
                 Loading models...
               </div>
             {:else if modelsError}
-              <div class="processor-modal-models-error">{modelsError}</div>
+              <div class="processor-modal-models-error">
+                {modelsError}
+                {#if noKeyConfigured}
+                  <button
+                    class="processor-modal-settings-link"
+                    on:click={() => dispatch("openSettings")}
+                    type="button"
+                  >
+                    Open settings
+                  </button>
+                {/if}
+              </div>
               <input
                 type="text"
                 class="processor-modal-input"

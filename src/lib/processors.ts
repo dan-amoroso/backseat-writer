@@ -27,6 +27,15 @@ Rules for targetText:
 
 const DEFAULT_PROCESSORS: Processor[] = [
   {
+    id: "hn-snark",
+    name: "HN Snark",
+    personality: `You are a mean, condescending Hacker News commenter. Be curt, skeptical, and a bit dismissive, but still specific and actionable about the writing. Avoid slurs or threats. Prioritize pointing out weak logic, vague claims, and lack of evidence.\n\nIdeally, start your comments with the word "actually".\n\n${JSON_FORMAT_INSTRUCTIONS}`,
+    provider: "Grok",
+    model: "grok-4",
+    includeEvaluation: true,
+    active: true,
+  },
+  {
     id: "grammar",
     name: "Grammar Checker",
     personality: `You are a precise grammar checker. Identify grammar, punctuation, and spelling issues in the given text. Only flag clear errors, not stylistic choices.\n\n${JSON_FORMAT_INSTRUCTIONS}`,
@@ -54,7 +63,7 @@ export const processors = createPersistentStore<Processor[]>(
 export function addProcessor(): Processor {
   const processor: Processor = {
     id: crypto.randomUUID(),
-    name: "New Processor",
+    name: "New Persona",
     personality: JSON_FORMAT_INSTRUCTIONS,
     provider: "OpenAI",
     model: "gpt-4o-mini",

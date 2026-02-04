@@ -25,18 +25,17 @@
     TRANSFORMERS,
     $convertFromMarkdownString as convertFromMarkdownString,
     $convertToMarkdownString as convertToMarkdownString,
-    type TextMatchTransformer,
   } from "@lexical/markdown";
   import { ListNode, ListItemNode } from "@lexical/list";
   import { LinkNode } from "@lexical/link";
   import { CodeNode, CodeHighlightNode } from "@lexical/code";
   import {
     TargetNode,
-    $createTargetNode as createTargetNode,
     $isTargetNode as isTargetNode,
     $toggleTarget as toggleTarget,
     $removeTargetById as removeTargetById,
     TOGGLE_TARGET_COMMAND,
+    createTarget,
   } from "$lib/nodes/TargetNode";
   import { comments } from "$lib/comments";
   import editorThemeClasses from "$lib/editorThemeClasses";
@@ -52,33 +51,7 @@
 
   const STORAGE_KEY = "editor-state";
 
-  let targetIdQueue: string[][] = [];
-
-  const TARGET: TextMatchTransformer = {
-    dependencies: [TargetNode],
-    export: (node, exportChildren) => {
-      if (!isTargetNode(node)) {
-        return null;
-      }
-      targetIdQueue.push(node.getTargetIds());
-      return `==${exportChildren(node)}==`;
-    },
-    importRegExp: /(?:==)(.+?)(?:==)/,
-    regExp: /(?:==)(.+?)(?:==)$/,
-    replace: (textNode, match) => {
-      const [, text] = match;
-      const ids = targetIdQueue.shift() || [crypto.randomUUID()];
-      const targetNode = createTargetNode(ids);
-      const targetTextNode = createTextNode(text);
-      targetTextNode.setFormat(textNode.getFormat());
-      targetNode.append(targetTextNode);
-      textNode.replace(targetNode);
-    },
-    trigger: "=",
-    type: "text-match",
-  };
-
-  const allTransformers = [...TRANSFORMERS, TARGET];
+  const allTransformers = [...TRANSFORMERS];
 
   export const editorStateJson = writable<string>("{}");
 
@@ -89,6 +62,7 @@
   let lastMode: "rich" | "markdown" = "rich";
   let markdownShortcutsCleanup: (() => void) | null = null;
   let lastRichStateJson = "{}";
+  let reconcileQueued = false;
 
   export let mode: "rich" | "markdown" = "rich";
 
@@ -124,7 +98,6 @@
 
   function getMarkdownFromEditor() {
     if (!editor) return "";
-    targetIdQueue = [];
     return editor
       .getEditorState()
       .read(() => convertToMarkdownString(allTransformers));
@@ -152,6 +125,77 @@
         }
         root.append(paragraph);
       }
+    });
+  }
+
+  function queueReconcileComments() {
+    if (!editor || mode !== "rich") return;
+    if (reconcileQueued) return;
+    reconcileQueued = true;
+    requestAnimationFrame(() => {
+      reconcileQueued = false;
+      reconcileCommentTargets();
+    });
+  }
+
+  function reconcileCommentTargets() {
+    if (!editor || mode !== "rich") return;
+    const currentComments = get(comments);
+    if (currentComments.length === 0) return;
+    const idsToRemove: string[] = [];
+    const updatedTargetText = new Map<string, string>();
+
+    editor.update(() => {
+      const targetTextById = new Map<string, string>();
+      const root = getRoot();
+      const walk = (node: import("lexical").LexicalNode) => {
+        if (isTargetNode(node)) {
+          const text = node.getTextContent();
+          for (const id of node.getTargetIds()) {
+            targetTextById.set(id, text);
+          }
+        }
+        if ("getChildren" in node && typeof node.getChildren === "function") {
+          (node.getChildren() as import("lexical").LexicalNode[]).forEach(walk);
+        }
+      };
+      walk(root);
+
+      for (const comment of currentComments) {
+        const existingText = targetTextById.get(comment.targetId);
+        if (existingText) {
+          if (!comment.targetText) {
+            updatedTargetText.set(comment.id, existingText);
+          }
+          continue;
+        }
+
+        const fallbackText = comment.targetText?.trim();
+        if (!fallbackText) {
+          idsToRemove.push(comment.id);
+          continue;
+        }
+        const created = createTarget(fallbackText, comment.targetId);
+        if (!created) {
+          idsToRemove.push(comment.id);
+        }
+      }
+    });
+
+    if (idsToRemove.length === 0 && updatedTargetText.size === 0) {
+      return;
+    }
+
+    comments.update((list) => {
+      const filtered = list.filter((c) => !idsToRemove.includes(c.id));
+      if (updatedTargetText.size === 0) {
+        return filtered;
+      }
+      return filtered.map((comment) => {
+        const nextText = updatedTargetText.get(comment.id);
+        if (!nextText) return comment;
+        return { ...comment, targetText: nextText };
+      });
     });
   }
 
@@ -273,6 +317,9 @@
               }
             }
           });
+          if (mode === "rich") {
+            queueReconcileComments();
+          }
         },
       ),
     );
@@ -326,8 +373,13 @@
 
     document.addEventListener("selectionchange", onSelectionChange);
     const origCleanup = cleanup;
+    const unsubscribeComments = comments.subscribe(() => {
+      queueReconcileComments();
+    });
+
     cleanup = () => {
       origCleanup();
+      unsubscribeComments();
       document.removeEventListener("selectionchange", onSelectionChange);
     };
   });
@@ -346,6 +398,7 @@
       markdownShortcutsCleanup = null;
     } else {
       applyMarkdownToEditor(markdownText);
+      queueReconcileComments();
       // Remove targets whose IDs no longer have comments
       const activeTargetIds = new Set(get(comments).map((c) => c.targetId));
       editor.update(() => {

@@ -22,7 +22,12 @@ export function applyPipelineResults(
       for (const comment of allComments) {
         const targetId = createTarget(comment.targetText);
         if (targetId) {
-          addComment(targetId, comment.author, comment.body);
+          addComment(
+            targetId,
+            comment.targetText,
+            comment.author,
+            comment.body,
+          );
           commentsCreated++;
         } else {
           commentsFailed++;

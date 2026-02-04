@@ -7,6 +7,16 @@ function storageKey(key: string): string {
   return `${STORAGE_PREFIX}${key}`;
 }
 
+export function clearStorage(): void {
+  if (!browser) return;
+  for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(STORAGE_PREFIX)) {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
 export function loadJson<T>(key: string, fallback: T): T {
   if (!browser) {
     return fallback;

@@ -190,7 +190,10 @@ export function $isTargetNode(
   return node instanceof TargetNode;
 }
 
-export function createTarget(content: string): TargetId | null {
+export function createTarget(
+  content: string,
+  targetId?: string,
+): TargetId | null {
   if (!content) {
     return null;
   }
@@ -265,12 +268,12 @@ export function createTarget(content: string): TargetId | null {
     return null;
   }
 
-  const targetId = crypto.randomUUID();
+  const resolvedTargetId = targetId ?? crypto.randomUUID();
   const selection = $createRangeSelection();
   selection.setTextNodeRange(startNode, startOffset, endNode, endOffset);
   $setSelection(selection);
-  $toggleTarget(targetId);
-  return targetId;
+  $toggleTarget(resolvedTargetId);
+  return resolvedTargetId;
 }
 
 function stripInlineMarkdown(input: string): string {

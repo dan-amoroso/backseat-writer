@@ -75,6 +75,7 @@
   let shareLabel = "Share";
   let shareDialogOpen = false;
   let shareDialogResolve: ((value: boolean) => void) | null = null;
+  let helpOpen = false;
 
   function decodeBase64Url(value: string): string | null {
     try {
@@ -140,6 +141,18 @@
   function onShareDialogKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
       resolveShareDialog(false);
+    }
+  }
+
+  function onHelpBackdropClick(event: MouseEvent) {
+    if (event.target === event.currentTarget) {
+      helpOpen = false;
+    }
+  }
+
+  function onHelpKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      helpOpen = false;
     }
   }
 
@@ -526,6 +539,7 @@
   // Selection action menu
   let selectionMenuTop: number | null = null;
   let selectionMenuText = "";
+  let hoverTargetIds: string[] = [];
 
   $: if ($selectionInfoStore && workspaceEl) {
     const info = $selectionInfoStore;
@@ -555,7 +569,7 @@
       toggleTarget(targetId);
     });
 
-    addComment(targetId, "You", event.detail.text);
+    addComment(targetId, selectionMenuText, "You", event.detail.text);
 
     clearSelectionMenu();
   }
@@ -565,6 +579,18 @@
     for (const mark of marks) {
       mark.removeAttribute("data-active");
     }
+  }
+
+  function clearHoverTargets() {
+    const marks = document.querySelectorAll("mark[data-target-ids]");
+    for (const mark of marks) {
+      mark.removeAttribute("data-hover");
+    }
+    const commentEls = document.querySelectorAll("[data-comment-target-id]");
+    for (const el of commentEls) {
+      el.removeAttribute("data-hover");
+    }
+    hoverTargetIds = [];
   }
 
   function handleDeleteComment(id: string) {
@@ -595,6 +621,7 @@
 
     addComment(
       targetId,
+      selectionMenuText,
       "You",
       `[Feedback requested on: "${selectionMenuText.slice(0, 80)}${selectionMenuText.length > 80 ? "..." : ""}"]`,
     );
@@ -620,6 +647,35 @@
     }
   }
 
+  function setHoverTargets(targetIds: string[]) {
+    if (targetIds.length === 0) {
+      clearHoverTargets();
+      return;
+    }
+    if (
+      hoverTargetIds.length === targetIds.length &&
+      hoverTargetIds.every((id) => targetIds.includes(id))
+    ) {
+      return;
+    }
+    clearHoverTargets();
+    const marks = document.querySelectorAll("mark[data-target-ids]");
+    for (const mark of marks) {
+      const ids = (mark.getAttribute("data-target-ids") || "").split(",");
+      if (ids.some((id) => targetIds.includes(id))) {
+        mark.setAttribute("data-hover", "true");
+      }
+    }
+    const commentEls = document.querySelectorAll("[data-comment-target-id]");
+    for (const el of commentEls) {
+      const id = el.getAttribute("data-comment-target-id");
+      if (id && targetIds.includes(id)) {
+        el.setAttribute("data-hover", "true");
+      }
+    }
+    hoverTargetIds = [...targetIds];
+  }
+
   function closeMobileComments() {
     mobileCommentsOpen = false;
     mobileCommentTargetIds = [];
@@ -643,6 +699,36 @@
     setActiveTargets(ids);
     mobileCommentTargetIds = ids;
     mobileCommentsOpen = true;
+  }
+
+  function handleEditorHover(event: MouseEvent) {
+    if (editorMode !== "rich") return;
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    const mark = target.closest("mark[data-target-ids]");
+    if (!mark) {
+      if ((event as MouseEvent).type === "mouseover") {
+        clearHoverTargets();
+      }
+      return;
+    }
+    const ids = (mark.getAttribute("data-target-ids") || "")
+      .split(",")
+      .filter(Boolean);
+    setHoverTargets(ids);
+  }
+
+  function handleEditorHoverOut(event: MouseEvent) {
+    if (editorMode !== "rich") return;
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    const mark = target.closest("mark[data-target-ids]");
+    if (!mark) return;
+    const next = event.relatedTarget as HTMLElement | null;
+    if (next && next.closest("mark[data-target-ids]") === mark) {
+      return;
+    }
+    clearHoverTargets();
   }
 
   $: if (mobileCommentsOpen && mobileCommentTargetIds.length) {
@@ -691,6 +777,28 @@
         <span class="mobile-word-count-label">
           {wordCount === 1 ? "word" : "words"}
         </span>
+      </div>
+      <div class="mobile-mode-toggle">
+        <div class="mode-toggle" role="group" aria-label="Editor mode">
+          <button
+            class="mode-toggle-button"
+            class:mode-toggle-button-active={editorMode === "rich"}
+            aria-pressed={editorMode === "rich"}
+            on:click={() => (editorMode = "rich")}
+            type="button"
+          >
+            Rich
+          </button>
+          <button
+            class="mode-toggle-button"
+            class:mode-toggle-button-active={editorMode === "markdown"}
+            aria-pressed={editorMode === "markdown"}
+            on:click={() => (editorMode = "markdown")}
+            type="button"
+          >
+            Markdown
+          </button>
+        </div>
       </div>
       <div class="mobile-header-links">
         <a class="about-link" href="/about">About</a>
@@ -872,6 +980,14 @@
             <circle cx="12" cy="12" r="3" />
           </svg>
         </button>
+        <button
+          class="help-btn"
+          on:click={() => (helpOpen = true)}
+          aria-label="Help"
+          type="button"
+        >
+          ?
+        </button>
       </div>
     </header>
     {#if mobileMenuOpen}
@@ -980,35 +1096,6 @@
             </button>
           </section>
           <section class="mobile-menu-section">
-            <h2 class="mobile-menu-section-title">Mode</h2>
-            <div class="mobile-menu-toggle-group" role="group">
-              <button
-                class="mobile-menu-toggle"
-                class:mobile-menu-toggle-active={editorMode === "rich"}
-                aria-pressed={editorMode === "rich"}
-                on:click={() => {
-                  editorMode = "rich";
-                  mobileMenuOpen = false;
-                }}
-                type="button"
-              >
-                Rich
-              </button>
-              <button
-                class="mobile-menu-toggle"
-                class:mobile-menu-toggle-active={editorMode === "markdown"}
-                aria-pressed={editorMode === "markdown"}
-                on:click={() => {
-                  editorMode = "markdown";
-                  mobileMenuOpen = false;
-                }}
-                type="button"
-              >
-                Markdown
-              </button>
-            </div>
-          </section>
-          <section class="mobile-menu-section">
             <h2 class="mobile-menu-section-title">Writing Type</h2>
             <label class="mobile-menu-label">
               <span>What are we writing?</span>
@@ -1027,7 +1114,7 @@
           </section>
           <section class="mobile-menu-section">
             <div class="mobile-menu-section-header">
-              <h2 class="mobile-menu-section-title">Processors</h2>
+              <h2 class="mobile-menu-section-title">Personas</h2>
               <button
                 class="mobile-menu-item mobile-menu-item-compact"
                 on:click={() => {
@@ -1058,18 +1145,19 @@
                     >
                   </button>
                   <button
-                    class="mobile-menu-processor-toggle"
-                    class:mobile-menu-processor-toggle-active={processor.active}
+                    class="mobile-menu-processor-mute"
+                    class:mobile-menu-processor-mute-active={processor.active}
                     on:click={() => {
                       toggleProcessor(processor.id);
                       mobileMenuOpen = false;
                     }}
-                    role="switch"
-                    aria-checked={processor.active}
-                    aria-label="Toggle {processor.name}"
+                    aria-pressed={processor.active}
+                    aria-label={processor.active
+                      ? `Mute ${processor.name}`
+                      : `Unmute ${processor.name}`}
                     type="button"
                   >
-                    <span class="mobile-menu-processor-thumb"></span>
+                    {processor.active ? "Mute" : "Unmute"}
                   </button>
                 </div>
               {/each}
@@ -1096,6 +1184,8 @@
       class="editor-content"
       bind:this={workspaceEl}
       on:click={handleEditorClick}
+      on:mouseover={handleEditorHover}
+      on:mouseout={handleEditorHoverOut}
     >
       <div class="editor-pane">
         <Editor
@@ -1118,6 +1208,7 @@
         {#each $comments as comment (comment.id)}
           <div
             data-comment-id={comment.id}
+            data-comment-target-id={comment.targetId}
             class="comment-positioned"
             style={commentOffsets[comment.id] != null
               ? `top:${commentOffsets[comment.id]}px`
@@ -1184,12 +1275,60 @@
   <SettingsModal on:close={() => (settingsOpen = false)} />
 {/if}
 
+{#if helpOpen}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div
+    class="help-backdrop"
+    on:click={onHelpBackdropClick}
+    on:keydown={onHelpKeydown}
+  >
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+    <div
+      class="help-overlay"
+      role="dialog"
+      aria-label="How to use BackseatWriter"
+      on:click|stopPropagation
+    >
+      <div class="help-card">
+        <h2 class="help-title">How to use BackseatWriter</h2>
+        <p class="help-text">
+          Write in the editor, then ask for AI feedback. Use personas to shape
+          the tone and focus.
+        </p>
+        <button
+          class="help-close"
+          on:click={() => (helpOpen = false)}
+          type="button"
+        >
+          Got it
+        </button>
+      </div>
+      <div class="help-highlight help-highlight-feedback"></div>
+      <div class="help-highlight help-highlight-personas"></div>
+      <div class="help-highlight help-highlight-comments"></div>
+      <div class="help-callout help-callout-feedback">
+        Main action: Get Feedback
+      </div>
+      <div class="help-callout help-callout-personas">
+        Personas live here. Click to edit or mute.
+      </div>
+      <div class="help-callout help-callout-comments">
+        Comments appear here, aligned with the text.
+      </div>
+    </div>
+  </div>
+{/if}
+
 {#if editingProcessor}
   <ProcessorModal
     processor={editingProcessor}
     on:save={handleProcessorSave}
     on:delete={handleProcessorDelete}
     on:close={() => (editingProcessor = null)}
+    on:openSettings={() => {
+      settingsOpen = true;
+      editingProcessor = null;
+    }}
   />
 {/if}
 

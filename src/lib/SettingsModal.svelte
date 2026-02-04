@@ -1,6 +1,11 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { settings, setApiKey, setVerifiedKey } from "$lib/storage";
+  import {
+    settings,
+    setApiKey,
+    setVerifiedKey,
+    clearStorage,
+  } from "$lib/storage";
   import { isProvider, providerModules } from "$lib/providerRegistry";
   import posthog from "posthog-js";
   import { browser } from "$app/environment";
@@ -121,6 +126,16 @@
     }
   }
 
+  function handleClearStorage() {
+    if (!browser) return;
+    const confirmed = window.confirm(
+      "Clear all BackseatWriter data from this browser? This cannot be undone.",
+    );
+    if (!confirmed) return;
+    clearStorage();
+    window.location.reload();
+  }
+
   $: if ($settings) {
     apiKeys = $settings.apiKeys || {};
     const verifiedKeys = $settings.verifiedKeys || {};
@@ -195,15 +210,7 @@
         </p>
         {#each apiKeyProviders as provider}
           <div class="api-key-row">
-            <div class="api-key-header">
-              <span class="api-key-name">{provider.name}</span>
-              <span
-                class="api-key-status"
-                class:api-key-set={apiKeys[provider.name]}
-              >
-                {apiKeys[provider.name] ? "configured" : "not set"}
-              </span>
-            </div>
+            <div class="api-key-name">{provider.name}</div>
             <div class="api-key-input-row">
               <div class="api-key-input-wrap">
                 <input
@@ -325,6 +332,23 @@
             </div>
           </div>
         {/each}
+      </div>
+      <div class="settings-section">
+        <h3 class="settings-section-title">
+          <span class="section-title-bar"></span>
+          Storage
+        </h3>
+        <p class="settings-section-desc">
+          Clear all saved editor content, comments, personas, and API keys
+          stored in this browser.
+        </p>
+        <button
+          class="settings-clear-storage"
+          on:click={handleClearStorage}
+          type="button"
+        >
+          Clear local storage for this app
+        </button>
       </div>
     </div>
   </div>
