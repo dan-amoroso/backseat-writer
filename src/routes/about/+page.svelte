@@ -19,7 +19,7 @@
     </p>
     <p>
       you can drop me an email, infact I would love it if you did, at
-      dan[at]deadend[]dev
+      dan[at]deadend[]dev, or on X @deadend_dev
     </p>
     <p>
       I have a blog at <a class="about-contact-link" href="https://deadend.dev"
