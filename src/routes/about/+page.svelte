@@ -11,8 +11,11 @@
     <p>
       BackseatWriter is a local-first writing studio that layers AI feedback on
       top of a rich-text editor. It stores your work and settings in your
-      browser.
+      browser, so it stays safe.
     </p>
+    <p>Please note that for now you need your own API keys for AI providers.</p>
+
+    <h3>From the developer</h3>
     <p>
       my name is Dan, I live in the Czech Republic and I like writing and
       building things with code
