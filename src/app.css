@@ -40,6 +40,14 @@
   background: transparent;
 }
 
+:root {
+  --bsw-font-scale: 1;
+}
+
+body {
+  font-size: calc(14px * var(--bsw-font-scale));
+}
+
 .editor-content {
   scrollbar-width: thin;
   scrollbar-color: rgba(160, 144, 120, 0.12) transparent;
@@ -92,7 +100,7 @@
   height: 100%;
   padding: 32px 36px;
   outline: none;
-  font-size: 17px;
+  font-size: calc(17px * var(--bsw-font-scale));
   line-height: 1.75;
   caret-color: #d4a054;
   tab-size: 4;
@@ -1692,7 +1700,7 @@ select:focus {
   background: rgba(9, 8, 7, 0.75);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  z-index: 110;
+  z-index: 90;
   animation: fadeIn 0.15s ease-out;
 }
 
@@ -1700,13 +1708,16 @@ select:focus {
   position: relative;
   width: 100%;
   height: 100%;
+  z-index: 91;
 }
 
 .help-card {
   position: absolute;
-  top: 90px;
-  right: 24px;
-  width: 260px;
+  top: 12%;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: min(420px, 60vw);
   padding: 14px 16px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1714,18 +1725,19 @@ select:focus {
   box-shadow:
     0 20px 50px rgba(0, 0, 0, 0.45),
     0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  z-index: 92;
 }
 
 .help-title {
   margin: 0 0 6px;
-  font-size: 13px;
+  font-size: 15px;
   color: #d9d3c7;
   letter-spacing: 0.02em;
 }
 
 .help-text {
   margin: 0 0 10px;
-  font-size: 12px;
+  font-size: 13px;
   color: #9b9488;
   line-height: 1.4;
 }
@@ -1751,35 +1763,6 @@ select:focus {
   background: rgba(212, 160, 84, 0.12);
 }
 
-.help-highlight {
-  position: absolute;
-  border-radius: 14px;
-  border: 1px solid rgba(212, 160, 84, 0.6);
-  box-shadow: 0 0 0 4px rgba(212, 160, 84, 0.1);
-  pointer-events: none;
-}
-
-.help-highlight-feedback {
-  top: 86px;
-  right: 120px;
-  width: 132px;
-  height: 42px;
-}
-
-.help-highlight-personas {
-  top: 140px;
-  left: 16px;
-  width: 160px;
-  height: 320px;
-}
-
-.help-highlight-comments {
-  top: 220px;
-  right: 16px;
-  width: 280px;
-  height: 360px;
-}
-
 .help-callout {
   position: absolute;
   padding: 8px 10px;
@@ -1790,21 +1773,33 @@ select:focus {
   font-size: 12px;
   line-height: 1.3;
   max-width: 210px;
+  z-index: 92;
 }
 
 .help-callout-feedback {
-  top: 40px;
-  right: 140px;
+  top: 6%;
+  right: 22%;
 }
 
 .help-callout-personas {
-  top: 110px;
-  left: 190px;
+  top: 16%;
+  left: 18%;
 }
 
 .help-callout-comments {
-  top: 200px;
-  right: 310px;
+  top: 30%;
+  right: 28%;
+}
+
+.help-open .processors-sidebar,
+.help-open .feedback-btn,
+.help-open .comments-pane {
+  position: relative;
+  z-index: 120;
+  box-shadow:
+    0 0 0 2px rgba(212, 160, 84, 0.35),
+    0 0 20px rgba(212, 160, 84, 0.18);
+  border-radius: 12px;
 }
 
 /* ── Modal header ── */
@@ -1909,6 +1904,18 @@ select:focus {
   color: #4a4540;
   line-height: 1.4;
   padding-left: 11px;
+}
+
+.settings-font-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #706860;
+}
+
+.settings-font-select {
+  max-width: 220px;
 }
 
 /* ── API key rows ── */
@@ -2807,7 +2814,6 @@ select:focus {
     align-items: center;
   }
 
-  .help-highlight,
   .help-callout {
     display: none;
   }

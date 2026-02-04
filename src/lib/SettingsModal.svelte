@@ -5,6 +5,7 @@
     setApiKey,
     setVerifiedKey,
     clearStorage,
+    setSetting,
   } from "$lib/storage";
   import { isProvider, providerModules } from "$lib/providerRegistry";
   import posthog from "posthog-js";
@@ -33,6 +34,7 @@
     {};
   let keyError: Record<string, string> = {};
   let keyValidationTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+  let fontScale = 1;
 
   function canUsePosthog(): boolean {
     if (!browser) return false;
@@ -138,6 +140,7 @@
 
   $: if ($settings) {
     apiKeys = $settings.apiKeys || {};
+    fontScale = $settings.uiFontScale ?? 1;
     const verifiedKeys = $settings.verifiedKeys || {};
     for (const provider of apiKeyProviders) {
       const hasKey = !!apiKeys[provider.name];
@@ -332,6 +335,29 @@
             </div>
           </div>
         {/each}
+      </div>
+      <div class="settings-section">
+        <h3 class="settings-section-title">
+          <span class="section-title-bar"></span>
+          Interface
+        </h3>
+        <label class="settings-font-label">
+          Font size
+          <select
+            class="settings-font-select"
+            bind:value={fontScale}
+            on:change={(event) =>
+              setSetting(
+                "uiFontScale",
+                Number((event.target as HTMLSelectElement).value),
+              )}
+          >
+            <option value="0.9">Small</option>
+            <option value="1">Normal</option>
+            <option value="1.1">Large</option>
+            <option value="1.2">Extra Large</option>
+          </select>
+        </label>
       </div>
       <div class="settings-section">
         <h3 class="settings-section-title">

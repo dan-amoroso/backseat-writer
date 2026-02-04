@@ -77,6 +77,10 @@
   let shareDialogResolve: ((value: boolean) => void) | null = null;
   let helpOpen = false;
 
+  $: if (browser) {
+    document.body.classList.toggle("help-open", helpOpen);
+  }
+
   function decodeBase64Url(value: string): string | null {
     try {
       const padded = value.replace(/-/g, "+").replace(/_/g, "/");
@@ -141,12 +145,6 @@
   function onShareDialogKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
       resolveShareDialog(false);
-    }
-  }
-
-  function onHelpBackdropClick(event: MouseEvent) {
-    if (event.target === event.currentTarget) {
-      helpOpen = false;
     }
   }
 
@@ -471,6 +469,14 @@
 
   $: if ($settings) {
     selectedWritingType = $settings.writingType || writingTypes[0];
+    if (browser) {
+      const scale =
+        typeof $settings.uiFontScale === "number" ? $settings.uiFontScale : 1;
+      document.documentElement.style.setProperty(
+        "--bsw-font-scale",
+        String(scale),
+      );
+    }
   }
 
   function syncCommentMarks() {
@@ -1279,15 +1285,13 @@
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
   <div
     class="help-backdrop"
-    on:click={onHelpBackdropClick}
+    on:click={() => (helpOpen = false)}
     on:keydown={onHelpKeydown}
   >
-    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
     <div
       class="help-overlay"
       role="dialog"
       aria-label="How to use BackseatWriter"
-      on:click|stopPropagation
     >
       <div class="help-card">
         <h2 class="help-title">How to use BackseatWriter</h2>
@@ -1295,17 +1299,8 @@
           Write in the editor, then ask for AI feedback. Use personas to shape
           the tone and focus.
         </p>
-        <button
-          class="help-close"
-          on:click={() => (helpOpen = false)}
-          type="button"
-        >
-          Got it
-        </button>
+        <button class="help-close" type="button">Got it</button>
       </div>
-      <div class="help-highlight help-highlight-feedback"></div>
-      <div class="help-highlight help-highlight-personas"></div>
-      <div class="help-highlight help-highlight-comments"></div>
       <div class="help-callout help-callout-feedback">
         Main action: Get Feedback
       </div>

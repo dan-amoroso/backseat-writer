@@ -52,12 +52,14 @@ export type Settings = {
   writingType: string;
   apiKeys: Record<string, string>;
   verifiedKeys: Record<string, boolean>;
+  uiFontScale: number;
 };
 
 const defaultSettings: Settings = {
   writingType: "Blog Post",
   apiKeys: {},
   verifiedKeys: {},
+  uiFontScale: 1,
 };
 
 export const settings = createPersistentStore<Settings>(

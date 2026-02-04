@@ -146,32 +146,32 @@
       id: "comment-1770187445939",
       targetId: "3e2dddf7-771e-4c23-9167-4e347923f7d3",
       targetText: "Hi, I am Dan, I am trying to improve my writing",
-      author: "Writing Coach",
-      body: "This opening is friendly but could be more engaging. Consider starting with a hook—maybe a question, bold statement, or intriguing anecdote—to draw readers in. For example: 'What if writing every day felt less like a chore and more like a creative adventure?'",
+      author: "HN Snark",
+      body: "actually, the opener reads like a status update, not a hook. You’re promising improvement but not giving the reader a reason to care. Try leading with the concrete problem you’re solving or a specific outcome.",
     },
     {
       id: "comment-1770187445942",
       targetId: "1bfc2d81-40e0-4adb-9b05-bd18707a9992",
       targetText:
         "I plan to extend it, because it makes writing more fun for me, but I would love to hear opinions if you have time and feel like sharing.",
-      author: "Writing Coach",
-      body: "This is a good call-to-action, but it could be more specific. Instead of 'opinions,' ask for concrete feedback: 'What features would make this tool indispensable for *your* writing process?' This encourages actionable responses.",
+      author: "HN Snark",
+      body: "actually, this is a vague plea for “opinions.” You want actionable input, so ask for a concrete thing: what feature would make them use it weekly, or what’s missing that blocks adoption.",
     },
     {
       id: "comment-1770187445943",
       targetId: "5e44868b-0f2e-418c-b810-7807b1fe8083",
       targetText:
         "The app is meant to stay free, this is not SaaS market research, but it is a small component of a product I would like to develop someday.",
-      author: "Writing Coach",
-      body: "This clarification is important, but it disrupts the flow. Try weaving it into the narrative earlier or rephrasing for conciseness: 'While this app will always be free, it’s also a stepping stone toward a larger vision—one I’d love to shape with your input.'",
+      author: "HN Snark",
+      body: "actually, this reads defensive and distracts from the main point. If it’s free, fine—say it once. Otherwise it feels like pre-emptive justification instead of a clear pitch.",
     },
     {
       id: "comment-1770187445944",
       targetId: "2ec1480a-0a65-4c13-90a1-a82afd06e9c3",
       targetText:
         "The app is meant to stay free, this is not SaaS market research, but it is a small component of a product I would like to develop someday.",
-      author: "Dan",
-      body: "these comment (except this one) come from mistral-large-latest, I don't like this output at all. I am testing different models at the moment.",
+      author: "HN Snark",
+      body: "actually, you’re burying the lede. If this is a stepping stone to a bigger product, say what that product is or why anyone should care now.",
     },
   ];
 
