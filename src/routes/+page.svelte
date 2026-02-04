@@ -70,6 +70,8 @@
   let editorComponent: Editor;
   let editingProcessor: Processor | null = null;
   let shareLabel = "Share";
+  let shareDialogOpen = false;
+  let shareDialogResolve: ((value: boolean) => void) | null = null;
 
   function decodeBase64Url(value: string): string | null {
     try {
@@ -113,18 +115,50 @@
       .replace(/=+$/g, "");
   }
 
+  function openShareDialog(): Promise<boolean> {
+    shareDialogOpen = true;
+    return new Promise((resolve) => {
+      shareDialogResolve = resolve;
+    });
+  }
+
+  function resolveShareDialog(value: boolean) {
+    shareDialogOpen = false;
+    shareDialogResolve?.(value);
+    shareDialogResolve = null;
+  }
+
+  function onShareDialogBackdropClick(event: MouseEvent) {
+    if (event.target === event.currentTarget) {
+      resolveShareDialog(false);
+    }
+  }
+
+  function onShareDialogKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      resolveShareDialog(false);
+    }
+  }
+
   onMount(() => {
     if (!browser) return;
     const params = new URLSearchParams(window.location.search);
     const hasEditorState = params.has("editorState");
     const hasText = params.has("text");
     const hasComments = params.has("comments");
+    const hasProcessors = params.has("processors");
     const hasApiKeys =
       params.has("apiKeys") ||
       params.has("openaiKey") ||
       params.has("perplexityKey");
 
-    if (!hasEditorState && !hasText && !hasComments && !hasApiKeys) {
+    if (
+      !hasEditorState &&
+      !hasText &&
+      !hasComments &&
+      !hasProcessors &&
+      !hasApiKeys
+    ) {
       return;
     }
 
@@ -192,6 +226,16 @@
       }
     } else if (editorInitialized) {
       deleteAllComments();
+    }
+
+    if (hasProcessors) {
+      const raw = params.get("processors");
+      if (raw) {
+        const parsed = parseJsonParam<Processor[]>(raw);
+        if (parsed && Array.isArray(parsed)) {
+          processors.set(parsed);
+        }
+      }
     }
   });
 
@@ -305,6 +349,7 @@
 
   async function copyShareLink() {
     try {
+      const includeKeysInShare = await openShareDialog();
       const url = new URL(window.location.href);
       const params = new URLSearchParams();
       const editorState = get(editorStateJson);
@@ -314,6 +359,19 @@
       const commentList = get(comments);
       if (commentList.length > 0) {
         params.set("comments", encodeBase64Url(JSON.stringify(commentList)));
+      }
+      const processorList = get(processors);
+      if (processorList.length > 0) {
+        params.set(
+          "processors",
+          encodeBase64Url(JSON.stringify(processorList)),
+        );
+      }
+      if (includeKeysInShare) {
+        const apiKeys = get(settings).apiKeys || {};
+        if (Object.keys(apiKeys).length > 0) {
+          params.set("apiKeys", encodeBase64Url(JSON.stringify(apiKeys)));
+        }
       }
       url.search = params.toString();
       await navigator.clipboard.writeText(url.toString());
@@ -777,4 +835,58 @@
     on:delete={handleProcessorDelete}
     on:close={() => (editingProcessor = null)}
   />
+{/if}
+
+{#if shareDialogOpen}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div
+    class="settings-backdrop"
+    on:click={onShareDialogBackdropClick}
+    on:keydown={onShareDialogKeydown}
+  >
+    <div class="share-dialog" role="dialog" aria-label="Share link">
+      <div class="share-dialog-header">
+        <div class="share-dialog-title">Share Link</div>
+        <button
+          class="share-dialog-close"
+          on:click={() => resolveShareDialog(false)}
+          aria-label="Close"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          >
+            <path d="M1 1l12 12M13 1L1 13" />
+          </svg>
+        </button>
+      </div>
+      <div class="share-dialog-body">
+        <p class="share-dialog-text">Include API keys in the share link?</p>
+        <p class="share-dialog-subtext">
+          Anyone with the link can see the keys.
+        </p>
+      </div>
+      <footer class="share-dialog-footer">
+        <button
+          class="share-dialog-cancel"
+          on:click={() => resolveShareDialog(false)}
+          type="button"
+        >
+          No, exclude keys
+        </button>
+        <button
+          class="share-dialog-confirm"
+          on:click={() => resolveShareDialog(true)}
+          type="button"
+        >
+          Yes, include keys
+        </button>
+      </footer>
+    </div>
+  </div>
 {/if}
