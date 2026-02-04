@@ -50,6 +50,14 @@
   </div>
   <div class="bottom-toolbar-end">
     <a class="about-link" href="/about">About</a>
+    <a
+      class="github-link"
+      href="https://github.com/dan-amoroso/backseat-writer"
+      target="_blank"
+      rel="noreferrer"
+    >
+      GitHub
+    </a>
     {#if editorStateJson}
       <DebugWidget {editorStateJson} />
     {/if}

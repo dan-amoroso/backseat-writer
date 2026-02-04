@@ -686,6 +686,23 @@
           <line x1="3" y1="18" x2="21" y2="18" />
         </svg>
       </button>
+      <div class="mobile-word-count">
+        <span class="mobile-word-count-number">{wordCount}</span>
+        <span class="mobile-word-count-label">
+          {wordCount === 1 ? "word" : "words"}
+        </span>
+      </div>
+      <div class="mobile-header-links">
+        <a class="about-link" href="/about">About</a>
+        <a
+          class="github-link"
+          href="https://github.com/dan-amoroso/backseat-writer"
+          target="_blank"
+          rel="noreferrer"
+        >
+          GitHub
+        </a>
+      </div>
       <div class="header-left">
         <FileMenu
           on:new={handleFileNew}
@@ -1070,10 +1087,6 @@
             >
               Settings
             </button>
-            <div class="mobile-menu-word-count">
-              <div class="word-count-number">{wordCount}</div>
-              <div class="word-count-label">words</div>
-            </div>
           </section>
         </aside>
       </div>
