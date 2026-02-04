@@ -17,6 +17,17 @@ export function clearStorage(): void {
   }
 }
 
+export function clearStorageExcept(keysToKeep: string[]): void {
+  if (!browser) return;
+  const keep = new Set(keysToKeep.map(storageKey));
+  for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(STORAGE_PREFIX) && !keep.has(key)) {
+      localStorage.removeItem(key);
+    }
+  }
+}
+
 export function loadJson<T>(key: string, fallback: T): T {
   if (!browser) {
     return fallback;

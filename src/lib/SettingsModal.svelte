@@ -5,6 +5,7 @@
     setApiKey,
     setVerifiedKey,
     clearStorage,
+    clearStorageExcept,
     setSetting,
   } from "$lib/storage";
   import { isProvider, providerModules } from "$lib/providerRegistry";
@@ -35,6 +36,8 @@
   let keyError: Record<string, string> = {};
   let keyValidationTimers: Record<string, ReturnType<typeof setTimeout>> = {};
   let fontScale = 1;
+  let clearStorageDialogOpen = false;
+  let clearStorageClearKeysToo = false;
 
   function canUsePosthog(): boolean {
     if (!browser) return false;
@@ -130,11 +133,35 @@
 
   function handleClearStorage() {
     if (!browser) return;
-    const confirmed = window.confirm(
-      "Clear all BackseatWriter data from this browser? This cannot be undone.",
-    );
-    if (!confirmed) return;
-    clearStorage();
+    clearStorageClearKeysToo = false;
+    clearStorageDialogOpen = true;
+  }
+
+  function closeClearStorageDialog() {
+    clearStorageDialogOpen = false;
+  }
+
+  function onClearStorageDialogBackdropClick(event: MouseEvent) {
+    event.stopPropagation();
+    if (event.target === event.currentTarget) {
+      closeClearStorageDialog();
+    }
+  }
+
+  function onClearStorageDialogKeydown(event: KeyboardEvent) {
+    event.stopPropagation();
+    if (event.key === "Escape") {
+      closeClearStorageDialog();
+    }
+  }
+
+  function confirmClearStorage() {
+    if (!browser) return;
+    if (clearStorageClearKeysToo) {
+      clearStorage();
+    } else {
+      clearStorageExcept(["settings"]);
+    }
     window.location.reload();
   }
 
@@ -365,8 +392,8 @@
           Storage
         </h3>
         <p class="settings-section-desc">
-          Clear all saved editor content, comments, personas, and API keys
-          stored in this browser.
+          Clear saved editor content, comments, and personas stored in this
+          browser. You can choose whether to also clear API keys.
         </p>
         <button
           class="settings-clear-storage"
@@ -379,3 +406,62 @@
     </div>
   </div>
 </div>
+
+{#if clearStorageDialogOpen}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div
+    class="settings-backdrop"
+    on:click={onClearStorageDialogBackdropClick}
+    on:keydown={onClearStorageDialogKeydown}
+  >
+    <div class="share-dialog" role="dialog" aria-label="Clear local storage">
+      <div class="share-dialog-header">
+        <div class="share-dialog-title">Clear Local Storage</div>
+        <button
+          class="share-dialog-close"
+          on:click={closeClearStorageDialog}
+          aria-label="Close"
+          type="button"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          >
+            <path d="M1 1l12 12M13 1L1 13" />
+          </svg>
+        </button>
+      </div>
+      <div class="share-dialog-body">
+        <p class="share-dialog-text">
+          Clear saved editor content, comments, and personas from this browser?
+        </p>
+        <p class="share-dialog-subtext">This cannot be undone.</p>
+        <label class="settings-checkbox-label">
+          <input type="checkbox" bind:checked={clearStorageClearKeysToo} />
+          Also clear saved API keys
+        </label>
+      </div>
+      <footer class="share-dialog-footer">
+        <button
+          class="confirm-dialog-cancel"
+          on:click={closeClearStorageDialog}
+          type="button"
+        >
+          Cancel
+        </button>
+        <button
+          class="confirm-dialog-danger"
+          on:click={confirmClearStorage}
+          type="button"
+        >
+          Clear storage
+        </button>
+      </footer>
+    </div>
+  </div>
+{/if}

@@ -25,6 +25,8 @@
   } from "@lexical/list";
   import { editorInstance } from "$lib/editorInstance";
 
+  export let placement: "header" | "editor" = "editor";
+
   let isBold = false;
   let isItalic = false;
   let isUnderline = false;
@@ -315,7 +317,12 @@
   }
 </script>
 
-<div class="formatting-toolbar" role="toolbar" aria-label="Text formatting">
+<div
+  class="formatting-toolbar"
+  class:formatting-toolbar-header={placement === "header"}
+  role="toolbar"
+  aria-label="Text formatting"
+>
   <button
     class="formatting-btn"
     on:mousedown|preventDefault

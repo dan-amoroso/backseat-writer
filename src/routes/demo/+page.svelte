@@ -29,7 +29,22 @@ Write text, hit "get feedback" on the top right. The app is BYOK at the moment, 
 Because how else to consume my free credits? :)
 `;
 
-  const DEMO_COMMENTS: Comment[] = [];
+  const DEMO_COMMENTS: Comment[] = [
+    {
+      id: "comment-demo-1",
+      targetId: "demo-target-1",
+      targetText: "AI as a soundingboard rather than producing your text.",
+      author: "HN Snark",
+      body: "actually… this is just “chat with guardrails” unless you define what it won’t do and how you’ll detect it. Also: *soundingboard* is one word, but you probably knew that.",
+    },
+    {
+      id: "comment-demo-2",
+      targetId: "demo-target-2",
+      targetText: "Because how else to consume my free credits? :)",
+      author: "HN Snark",
+      body: "actually, the free-credits bit is the most honest line here. But if that’s the hook, the rest needs sharper claims than “WIP” and “planning to”.",
+    },
+  ];
 
   onMount(async () => {
     if (!browser) return;

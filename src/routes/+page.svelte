@@ -792,18 +792,55 @@
         </a>
       </div>
       <div class="header-left">
-        <FileMenu
-          on:new={handleFileNew}
-          on:open={handleFileOpen}
-          on:save={handleFileSave}
-        />
-        <div class="undo-redo-group" role="group" aria-label="Undo and redo">
-          <button
-            class="undo-btn"
-            on:click={() => undo()}
-            aria-label="Undo"
-            type="button"
-          >
+        <div class="header-left-top">
+          <FileMenu
+            on:new={handleFileNew}
+            on:open={handleFileOpen}
+            on:save={handleFileSave}
+          />
+          <div class="undo-redo-group" role="group" aria-label="Undo and redo">
+            <button
+              class="undo-btn"
+              on:click={() => undo()}
+              aria-label="Undo"
+              type="button"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              </svg>
+            </button>
+            <button
+              class="redo-btn"
+              on:click={() => redo()}
+              aria-label="Redo"
+              type="button"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
+              </svg>
+            </button>
+          </div>
+          <button class="copy-btn" on:click={copyToClipboard}>
             <svg
               width="14"
               height="14"
@@ -814,16 +851,14 @@
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <polyline points="1 4 1 10 7 10" />
-              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path
+                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+              />
             </svg>
+            {copyLabel}
           </button>
-          <button
-            class="redo-btn"
-            on:click={() => redo()}
-            aria-label="Redo"
-            type="button"
-          >
+          <button class="share-btn" on:click={copyShareLink}>
             <svg
               width="14"
               height="14"
@@ -834,48 +869,19 @@
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
+              <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
             </svg>
+            {shareLabel}
           </button>
         </div>
-        <button class="copy-btn" on:click={copyToClipboard}>
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-          </svg>
-          {copyLabel}
-        </button>
-        <button class="share-btn" on:click={copyShareLink}>
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="18" cy="5" r="3" />
-            <circle cx="6" cy="12" r="3" />
-            <circle cx="18" cy="19" r="3" />
-            <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
-            <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
-          </svg>
-          {shareLabel}
-        </button>
+        <div class="header-left-bottom">
+          <FormattingToolbar placement="header" />
+        </div>
       </div>
-      <div class="header-center"></div>
       <div class="header-controls">
         <label>
           What are we writing?
@@ -1147,7 +1153,6 @@
       on:mouseout={handleEditorHoverOut}
     >
       <div class="editor-pane">
-        <FormattingToolbar />
         <Editor bind:this={editorComponent} bind:editorStateJson />
       </div>
       <aside class="comments-pane">
