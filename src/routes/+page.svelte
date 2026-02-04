@@ -69,6 +69,7 @@
   let editorMode: "rich" | "markdown" = "rich";
   let editorComponent: Editor;
   let editingProcessor: Processor | null = null;
+  let mobileMenuOpen = false;
   let shareLabel = "Share";
   let shareDialogOpen = false;
   let shareDialogResolve: ((value: boolean) => void) | null = null;
@@ -241,6 +242,10 @@
 
   function handleProcessorSelect(event: CustomEvent<Processor>) {
     editingProcessor = event.detail;
+  }
+
+  function openProcessor(processor: Processor) {
+    editingProcessor = processor;
   }
 
   function handleProcessorAdd() {
@@ -609,6 +614,28 @@
   />
   <div class="workspace">
     <header class="header">
+      <button
+        class="mobile-menu-btn"
+        on:click={() => (mobileMenuOpen = !mobileMenuOpen)}
+        aria-label="Menu"
+        aria-expanded={mobileMenuOpen}
+        type="button"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
       <div class="header-left">
         <FileMenu
           on:new={handleFileNew}
@@ -780,6 +807,227 @@
         </button>
       </div>
     </header>
+    {#if mobileMenuOpen}
+      <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+      <div
+        class="mobile-menu-backdrop"
+        on:click={() => (mobileMenuOpen = false)}
+      >
+        <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+        <aside class="mobile-menu" on:click|stopPropagation>
+          <div class="mobile-menu-header">
+            <div class="mobile-menu-title">Menu</div>
+            <button
+              class="mobile-menu-close"
+              on:click={() => (mobileMenuOpen = false)}
+              aria-label="Close menu"
+              type="button"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              >
+                <path d="M1 1l12 12M13 1L1 13" />
+              </svg>
+            </button>
+          </div>
+          <section class="mobile-menu-section">
+            <h2 class="mobile-menu-section-title">File</h2>
+            <button
+              class="mobile-menu-item"
+              on:click={() => {
+                handleFileNew();
+                mobileMenuOpen = false;
+              }}
+              type="button"
+            >
+              New
+            </button>
+            <button
+              class="mobile-menu-item"
+              on:click={() => {
+                handleFileOpen();
+                mobileMenuOpen = false;
+              }}
+              type="button"
+            >
+              Open
+            </button>
+            <button
+              class="mobile-menu-item"
+              on:click={() => {
+                handleFileSave();
+                mobileMenuOpen = false;
+              }}
+              type="button"
+            >
+              Save
+            </button>
+          </section>
+          <section class="mobile-menu-section">
+            <h2 class="mobile-menu-section-title">Edit</h2>
+            <button
+              class="mobile-menu-item"
+              on:click={() => {
+                undo();
+                mobileMenuOpen = false;
+              }}
+              type="button"
+            >
+              Undo
+            </button>
+            <button
+              class="mobile-menu-item"
+              on:click={() => {
+                redo();
+                mobileMenuOpen = false;
+              }}
+              type="button"
+            >
+              Redo
+            </button>
+            <button
+              class="mobile-menu-item"
+              on:click={() => {
+                copyToClipboard();
+                mobileMenuOpen = false;
+              }}
+              type="button"
+            >
+              Copy
+            </button>
+            <button
+              class="mobile-menu-item"
+              on:click={() => {
+                copyShareLink();
+                mobileMenuOpen = false;
+              }}
+              type="button"
+            >
+              Share
+            </button>
+          </section>
+          <section class="mobile-menu-section">
+            <h2 class="mobile-menu-section-title">Mode</h2>
+            <div class="mobile-menu-toggle-group" role="group">
+              <button
+                class="mobile-menu-toggle"
+                class:mobile-menu-toggle-active={editorMode === "rich"}
+                aria-pressed={editorMode === "rich"}
+                on:click={() => {
+                  editorMode = "rich";
+                  mobileMenuOpen = false;
+                }}
+                type="button"
+              >
+                Rich
+              </button>
+              <button
+                class="mobile-menu-toggle"
+                class:mobile-menu-toggle-active={editorMode === "markdown"}
+                aria-pressed={editorMode === "markdown"}
+                on:click={() => {
+                  editorMode = "markdown";
+                  mobileMenuOpen = false;
+                }}
+                type="button"
+              >
+                Markdown
+              </button>
+            </div>
+          </section>
+          <section class="mobile-menu-section">
+            <h2 class="mobile-menu-section-title">Writing Type</h2>
+            <label class="mobile-menu-label">
+              <span>What are we writing?</span>
+              <select
+                bind:value={selectedWritingType}
+                on:change={(event) => {
+                  onWritingTypeChange(event);
+                  mobileMenuOpen = false;
+                }}
+              >
+                {#each writingTypes as wt}
+                  <option>{wt}</option>
+                {/each}
+              </select>
+            </label>
+          </section>
+          <section class="mobile-menu-section">
+            <div class="mobile-menu-section-header">
+              <h2 class="mobile-menu-section-title">Processors</h2>
+              <button
+                class="mobile-menu-item mobile-menu-item-compact"
+                on:click={() => {
+                  handleProcessorAdd();
+                  mobileMenuOpen = false;
+                }}
+                type="button"
+              >
+                Add
+              </button>
+            </div>
+            <div class="mobile-menu-processors">
+              {#each $processors as processor (processor.id)}
+                <div class="mobile-menu-processor">
+                  <button
+                    class="mobile-menu-processor-info"
+                    on:click={() => {
+                      openProcessor(processor);
+                      mobileMenuOpen = false;
+                    }}
+                    type="button"
+                  >
+                    <span class="mobile-menu-processor-name"
+                      >{processor.name}</span
+                    >
+                    <span class="mobile-menu-processor-meta"
+                      >{processor.provider} · {processor.model}</span
+                    >
+                  </button>
+                  <button
+                    class="mobile-menu-processor-toggle"
+                    class:mobile-menu-processor-toggle-active={processor.active}
+                    on:click={() => {
+                      toggleProcessor(processor.id);
+                      mobileMenuOpen = false;
+                    }}
+                    role="switch"
+                    aria-checked={processor.active}
+                    aria-label="Toggle {processor.name}"
+                    type="button"
+                  >
+                    <span class="mobile-menu-processor-thumb"></span>
+                  </button>
+                </div>
+              {/each}
+            </div>
+          </section>
+          <section class="mobile-menu-section">
+            <h2 class="mobile-menu-section-title">Other</h2>
+            <button
+              class="mobile-menu-item"
+              on:click={() => {
+                settingsOpen = true;
+                mobileMenuOpen = false;
+              }}
+              type="button"
+            >
+              Settings
+            </button>
+            <div class="mobile-menu-word-count">
+              <div class="word-count-number">{wordCount}</div>
+              <div class="word-count-label">words</div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    {/if}
     <div class="editor-content" bind:this={workspaceEl}>
       <div class="editor-pane">
         <Editor
