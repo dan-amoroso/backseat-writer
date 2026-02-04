@@ -70,6 +70,8 @@
   let editorComponent: Editor;
   let editingProcessor: Processor | null = null;
   let mobileMenuOpen = false;
+  let mobileCommentsOpen = false;
+  let mobileCommentTargetIds: string[] = [];
   let shareLabel = "Share";
   let shareDialogOpen = false;
   let shareDialogResolve: ((value: boolean) => void) | null = null;
@@ -603,6 +605,54 @@
   function handleSelectionDismiss() {
     clearSelectionMenu();
   }
+
+  function isMobileViewport(): boolean {
+    return browser && window.matchMedia("(max-width: 768px)").matches;
+  }
+
+  function setActiveTargets(targetIds: string[]) {
+    const marks = document.querySelectorAll("mark[data-target-ids]");
+    for (const mark of marks) {
+      const ids = (mark.getAttribute("data-target-ids") || "").split(",");
+      if (ids.some((id) => targetIds.includes(id))) {
+        mark.setAttribute("data-active", "true");
+      }
+    }
+  }
+
+  function closeMobileComments() {
+    mobileCommentsOpen = false;
+    mobileCommentTargetIds = [];
+    clearActiveTargets();
+  }
+
+  function handleEditorClick(event: MouseEvent) {
+    if (!isMobileViewport()) return;
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    const mark = target.closest("mark[data-target-ids]");
+    if (!mark) return;
+    const ids = (mark.getAttribute("data-target-ids") || "")
+      .split(",")
+      .filter(Boolean);
+    const availableComments = get(comments).filter((comment) =>
+      ids.includes(comment.targetId),
+    );
+    if (availableComments.length === 0) return;
+    clearActiveTargets();
+    setActiveTargets(ids);
+    mobileCommentTargetIds = ids;
+    mobileCommentsOpen = true;
+  }
+
+  $: if (mobileCommentsOpen && mobileCommentTargetIds.length) {
+    const remaining = $comments.filter((comment) =>
+      mobileCommentTargetIds.includes(comment.targetId),
+    );
+    if (remaining.length === 0) {
+      closeMobileComments();
+    }
+  }
 </script>
 
 <main>
@@ -1028,7 +1078,12 @@
         </aside>
       </div>
     {/if}
-    <div class="editor-content" bind:this={workspaceEl}>
+    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+    <div
+      class="editor-content"
+      bind:this={workspaceEl}
+      on:click={handleEditorClick}
+    >
       <div class="editor-pane">
         <Editor
           bind:this={editorComponent}
@@ -1063,6 +1118,43 @@
         {/each}
       </aside>
     </div>
+    {#if mobileCommentsOpen}
+      <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+      <div class="mobile-comments-backdrop" on:click={closeMobileComments}>
+        <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+        <aside class="mobile-comments-panel" on:click|stopPropagation>
+          <div class="mobile-comments-header">
+            <div class="mobile-comments-title">Comments</div>
+            <button
+              class="mobile-comments-close"
+              on:click={closeMobileComments}
+              aria-label="Close comments"
+              type="button"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              >
+                <path d="M1 1l12 12M13 1L1 13" />
+              </svg>
+            </button>
+          </div>
+          <div class="mobile-comments-list">
+            {#each $comments.filter( (comment) => mobileCommentTargetIds.includes(comment.targetId), ) as comment (comment.id)}
+              <CommentBubble
+                {comment}
+                on:delete={(e) => handleDeleteComment(e.detail)}
+              />
+            {/each}
+          </div>
+        </aside>
+      </div>
+    {/if}
     <BottomToolbar
       {wordCount}
       processors={$processors}
