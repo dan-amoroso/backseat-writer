@@ -49,6 +49,7 @@
     {/each}
   </div>
   <div class="bottom-toolbar-end">
+    <a class="about-link" href="/about">About</a>
     {#if editorStateJson}
       <DebugWidget {editorStateJson} />
     {/if}

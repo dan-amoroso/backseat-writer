@@ -352,7 +352,10 @@
       const includeKeysInShare = await openShareDialog();
       const url = new URL(window.location.href);
       const params = new URLSearchParams();
-      const editorState = get(editorStateJson);
+      const editorState =
+        editorMode === "markdown"
+          ? editorComponent?.getRichEditorStateJson?.() || get(editorStateJson)
+          : get(editorStateJson);
       if (editorState && editorState !== "{}") {
         params.set("editorState", encodeBase64Url(editorState));
       }

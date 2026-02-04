@@ -87,6 +87,7 @@
   let markdownText = "";
   let lastMode: "rich" | "markdown" = "rich";
   let markdownShortcutsCleanup: (() => void) | null = null;
+  let lastRichStateJson = "{}";
 
   export let mode: "rich" | "markdown" = "rich";
 
@@ -107,11 +108,17 @@
     try {
       const parsed = editor.parseEditorState(json);
       editor.setEditorState(parsed);
-      editorStateJson.set(JSON.stringify(JSON.parse(json), null, 2));
+      const pretty = JSON.stringify(JSON.parse(json), null, 2);
+      editorStateJson.set(pretty);
+      lastRichStateJson = pretty;
       return true;
     } catch {
       return false;
     }
+  }
+
+  export function getRichEditorStateJson(): string {
+    return lastRichStateJson;
   }
 
   function getMarkdownFromEditor() {
@@ -168,7 +175,9 @@
     if (saved) {
       const parsed = editor.parseEditorState(JSON.stringify(saved));
       editor.setEditorState(parsed);
-      editorStateJson.set(JSON.stringify(saved, null, 2));
+      const pretty = JSON.stringify(saved, null, 2);
+      editorStateJson.set(pretty);
+      lastRichStateJson = pretty;
     }
 
     editorInstance.set(editor);
@@ -217,7 +226,11 @@
         ({ editorState }: { editorState: EditorState }) => {
           const json = editorState.toJSON();
           saveJson(STORAGE_KEY, json);
-          editorStateJson.set(JSON.stringify(json, null, 2));
+          const pretty = JSON.stringify(json, null, 2);
+          editorStateJson.set(pretty);
+          if (mode === "rich") {
+            lastRichStateJson = pretty;
+          }
 
           // Track selection for the action menu
           editorState.read(() => {
