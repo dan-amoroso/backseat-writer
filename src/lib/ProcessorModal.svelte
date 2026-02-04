@@ -13,7 +13,13 @@
     close: void;
   }>();
 
-  const providers: Provider[] = ["OpenAI", "Perplexity", "Gemini", "Mistral"];
+  const providers: Provider[] = [
+    "OpenAI",
+    "Perplexity",
+    "Gemini",
+    "Mistral",
+    "Qwen",
+  ];
 
   let name = processor.name;
   let personality = processor.personality;

@@ -1,10 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import { settings, setApiKey, setVerifiedKey } from "$lib/storage";
-  import { validateKey } from "$lib/perplexity";
-  import { validateKey as validateOpenAIKey } from "$lib/openai";
-  import { validateKey as validateGeminiKey } from "$lib/gemini";
-  import { validateKey as validateMistralKey } from "$lib/mistral";
+  import { isProvider, providerModules } from "$lib/providerRegistry";
   import posthog from "posthog-js";
 
   const dispatch = createEventDispatcher<{ close: void }>();
@@ -16,6 +13,7 @@
   }[] = [
     { name: "OpenAI", placeholder: "sk-...", canValidate: true },
     { name: "Perplexity", placeholder: "pplx-...", canValidate: true },
+    { name: "Qwen", placeholder: "sk-...", canValidate: true },
     { name: "Anthropic", placeholder: "sk-ant-...", canValidate: false },
     { name: "Mistral", placeholder: "mk-...", canValidate: true },
     { name: "Zen", placeholder: "zen-...", canValidate: false },
@@ -48,14 +46,9 @@
 
     keyStatus[provider] = "validating";
     keyValidationTimers[provider] = setTimeout(async () => {
-      const result =
-        provider === "OpenAI"
-          ? await validateOpenAIKey(value)
-          : provider === "Gemini"
-            ? await validateGeminiKey(value)
-            : provider === "Mistral"
-              ? await validateMistralKey(value)
-              : await validateKey(value);
+      const module = isProvider(provider) ? providerModules[provider] : null;
+      if (!module?.canValidate) return;
+      const result = await module.validateKey(value);
       if (apiKeys[provider] === value) {
         if (result.valid) {
           keyStatus[provider] = "valid";
@@ -83,14 +76,9 @@
     }
 
     keyStatus[provider] = "validating";
-    const result =
-      provider === "OpenAI"
-        ? await validateOpenAIKey(value)
-        : provider === "Gemini"
-          ? await validateGeminiKey(value)
-          : provider === "Mistral"
-            ? await validateMistralKey(value)
-            : await validateKey(value);
+    const module = isProvider(provider) ? providerModules[provider] : null;
+    if (!module?.canValidate) return;
+    const result = await module.validateKey(value);
     if (apiKeys[provider] === value) {
       if (result.valid) {
         keyStatus[provider] = "valid";

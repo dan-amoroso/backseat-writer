@@ -1,7 +1,4 @@
-import { chatCompletion as openAIChatCompletion } from "$lib/openai";
-import { chatCompletion as perplexityChatCompletion } from "$lib/perplexity";
-import { generateContent as geminiGenerateContent } from "$lib/gemini";
-import { chatCompletion as mistralChatCompletion } from "$lib/mistral";
+import { providerModules, type Provider } from "$lib/providerRegistry";
 
 // ── Types ──
 
@@ -19,7 +16,7 @@ export interface ProcessorResult {
   error?: string;
 }
 
-export type Provider = "OpenAI" | "Perplexity" | "Gemini" | "Mistral";
+export type { Provider } from "$lib/providerRegistry";
 
 export interface ProviderBinding {
   provider: Provider;
@@ -179,41 +176,13 @@ async function callProvider(
   systemPrompt: string,
   userContent: string,
 ): Promise<string> {
-  if (binding.provider === "Gemini") {
-    const result = await geminiGenerateContent(key, {
-      model: binding.model,
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ role: "user", parts: [{ text: userContent }] }],
-    });
-    return result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  }
-
-  const messages = [
-    { role: "system" as const, content: systemPrompt },
-    { role: "user" as const, content: userContent },
-  ];
-
-  if (binding.provider === "OpenAI") {
-    const result = await openAIChatCompletion(key, {
-      model: binding.model,
-      messages,
-    });
-    return result.choices?.[0]?.message?.content || "";
-  }
-
-  if (binding.provider === "Mistral") {
-    const result = await mistralChatCompletion(key, {
-      model: binding.model,
-      messages,
-    });
-    return result.choices?.[0]?.message?.content || "";
-  }
-
-  const result = await perplexityChatCompletion(key, {
+  const provider = providerModules[binding.provider];
+  return provider.generateText({
+    apiKey: key,
     model: binding.model,
-    messages,
+    systemPrompt,
+    userContent,
   });
-  return result.choices?.[0]?.message?.content || "";
 }
 
 export async function runProcessor(
