@@ -3,6 +3,7 @@
   import { settings, setApiKey, setVerifiedKey } from "$lib/storage";
   import { isProvider, providerModules } from "$lib/providerRegistry";
   import posthog from "posthog-js";
+  import { browser } from "$app/environment";
 
   const dispatch = createEventDispatcher<{ close: void }>();
 
@@ -27,6 +28,12 @@
     {};
   let keyError: Record<string, string> = {};
   let keyValidationTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+  function canUsePosthog(): boolean {
+    if (!browser) return false;
+    const host = window.location.hostname;
+    return host !== "localhost" && host !== "127.0.0.1" && host !== "::1";
+  }
 
   function onApiKeyInput(provider: string, event: Event) {
     const input = event.target as HTMLInputElement;
@@ -55,7 +62,9 @@
           keyStatus[provider] = "valid";
           keyError[provider] = "";
           setVerifiedKey(provider, true);
-          posthog?.capture?.("api_key_configured", { provider });
+          if (canUsePosthog()) {
+            posthog?.capture?.("api_key_configured", { provider });
+          }
         } else {
           keyStatus[provider] = "invalid";
           keyError[provider] = result.error;
@@ -85,7 +94,9 @@
         keyStatus[provider] = "valid";
         keyError[provider] = "";
         setVerifiedKey(provider, true);
-        posthog?.capture?.("api_key_configured", { provider });
+        if (canUsePosthog()) {
+          posthog?.capture?.("api_key_configured", { provider });
+        }
       } else {
         keyStatus[provider] = "invalid";
         keyError[provider] = result.error;
