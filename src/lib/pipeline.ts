@@ -29,7 +29,6 @@ export interface ProviderBinding {
 export interface ProcessorDefinition {
   id: string;
   name: string;
-  author: string;
   bindings: ProviderBinding[];
   systemPrompt: string;
   includeEvaluation: boolean;
@@ -63,8 +62,7 @@ Rules for targetText:
 export const PROCESSORS: ProcessorDefinition[] = [
   {
     id: "grammar",
-    name: "Grammar",
-    author: "Grammar Checker",
+    name: "Grammar Checker",
     bindings: [
       { provider: "OpenAI", model: "gpt-4o-mini" },
       { provider: "Gemini", model: "gemini-2.0-flash" },
@@ -77,8 +75,7 @@ ${JSON_FORMAT_INSTRUCTIONS}`,
   },
   {
     id: "style",
-    name: "Style",
-    author: "Style Advisor",
+    name: "Style Advisor",
     bindings: [
       { provider: "OpenAI", model: "gpt-4o-mini" },
       { provider: "Gemini", model: "gemini-2.0-flash" },
@@ -249,7 +246,7 @@ export async function runProcessor(
 
     const comments: ProcessorComment[] = parsed.comments.map((c) => ({
       targetText: c.targetText,
-      author: processor.author,
+      author: processor.name,
       body: c.body,
     }));
 

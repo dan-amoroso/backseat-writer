@@ -38,6 +38,7 @@
     addProcessor as addNewProcessor,
     updateProcessor,
     removeProcessor,
+    toggleProcessor,
   } from "$lib/processors";
   import type { Processor } from "$lib/processors";
   import ProcessorsSidebar from "$lib/ProcessorsSidebar.svelte";
@@ -86,14 +87,15 @@
   }
 
   function processorsToDefinitions(procs: Processor[]): ProcessorDefinition[] {
-    return procs.map((p) => ({
-      id: p.id,
-      name: p.name,
-      author: p.author,
-      bindings: [{ provider: p.provider, model: p.model }],
-      systemPrompt: p.personality,
-      includeEvaluation: p.includeEvaluation,
-    }));
+    return procs
+      .filter((p) => p.active)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        bindings: [{ provider: p.provider, model: p.model }],
+        systemPrompt: p.personality,
+        includeEvaluation: p.includeEvaluation,
+      }));
   }
 
   async function getFeedback() {
@@ -393,6 +395,7 @@
   <ProcessorsSidebar
     processors={$processors}
     on:select={handleProcessorSelect}
+    on:toggle={(e) => toggleProcessor(e.detail)}
     on:add={handleProcessorAdd}
   />
   <div class="workspace">

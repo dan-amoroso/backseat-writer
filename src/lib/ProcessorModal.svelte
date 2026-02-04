@@ -16,7 +16,6 @@
   const providers: Provider[] = ["OpenAI", "Perplexity", "Gemini", "Mistral"];
 
   let name = processor.name;
-  let author = processor.author;
   let personality = processor.personality;
   let provider: Provider = processor.provider;
   let model = processor.model;
@@ -61,7 +60,6 @@
     dispatch("save", {
       ...processor,
       name,
-      author,
       personality,
       provider,
       model,
@@ -130,18 +128,6 @@
               class="processor-modal-input"
               bind:value={name}
               placeholder="Processor name"
-            />
-          </label>
-        </fieldset>
-
-        <fieldset class="processor-modal-field">
-          <label class="processor-modal-label">
-            Author label
-            <input
-              type="text"
-              class="processor-modal-input"
-              bind:value={author}
-              placeholder="Comment author name"
             />
           </label>
         </fieldset>

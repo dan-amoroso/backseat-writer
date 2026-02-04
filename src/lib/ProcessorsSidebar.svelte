@@ -6,8 +6,14 @@
 
   const dispatch = createEventDispatcher<{
     select: Processor;
+    toggle: string;
     add: void;
   }>();
+
+  function onToggleClick(event: MouseEvent, id: string) {
+    event.stopPropagation();
+    dispatch("toggle", id);
+  }
 </script>
 
 <nav class="processors-sidebar" aria-label="Processors">
@@ -15,12 +21,33 @@
     {#each processors as processor (processor.id)}
       <button
         class="processor-tile"
+        class:processor-tile-inactive={!processor.active}
         on:click={() => dispatch("select", processor)}
         title={processor.name}
         type="button"
       >
         <span class="processor-tile-name">{processor.name}</span>
         <span class="processor-tile-model">{processor.model}</span>
+        <span class="processor-tile-provider">{processor.provider}</span>
+        <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+        <span
+          class="processor-toggle"
+          class:processor-toggle-on={processor.active}
+          on:click={(e) => onToggleClick(e, processor.id)}
+          role="switch"
+          aria-checked={processor.active}
+          aria-label="Toggle {processor.name}"
+          tabindex="0"
+          on:keydown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              dispatch("toggle", processor.id);
+            }
+          }}
+        >
+          <span class="processor-toggle-thumb"></span>
+        </span>
       </button>
     {/each}
   </div>
