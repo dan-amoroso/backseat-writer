@@ -1,5 +1,4 @@
 import { createPersistentStore } from "$lib/storage";
-import { get } from "svelte/store";
 import type { Provider } from "$lib/pipeline";
 
 export interface Processor {
@@ -25,11 +24,30 @@ Rules for targetText:
 - Keep it short: a phrase or single sentence, not a whole paragraph
 - Each targetText must appear only once in the document — if the same phrase appears multiple times, skip it`;
 
+function stripJsonFormatInstructions(prompt: string): string {
+  const normalized = prompt.trim();
+  if (!normalized) return "";
+  if (!normalized.endsWith(JSON_FORMAT_INSTRUCTIONS)) return normalized;
+  return normalized
+    .slice(0, normalized.length - JSON_FORMAT_INSTRUCTIONS.length)
+    .trim();
+}
+
+export function buildProcessorSystemPrompt(personality: string): string {
+  const trimmed = personality.trim();
+  if (!trimmed) return JSON_FORMAT_INSTRUCTIONS;
+  if (trimmed.includes(JSON_FORMAT_INSTRUCTIONS)) return trimmed;
+  const base = stripJsonFormatInstructions(trimmed);
+  if (!base) return JSON_FORMAT_INSTRUCTIONS;
+  return `${base}\n\n${JSON_FORMAT_INSTRUCTIONS}`;
+}
+
 const DEFAULT_PROCESSORS: Processor[] = [
   {
     id: "hn-snark",
     name: "HN Snark",
-    personality: `You are a mean, condescending Hacker News commenter. Be curt, skeptical, and a bit dismissive, but still specific and actionable about the writing. Avoid slurs or threats. Prioritize pointing out weak logic, vague claims, and lack of evidence.\n\nIdeally, start your comments with the word "actually".\n\n${JSON_FORMAT_INSTRUCTIONS}`,
+    personality:
+      'You are a Hacker News commenter. Be curt, skeptical, and a bit dismissive, but still specific and actionable about the writing. Avoid slurs or threats. Prioritize pointing out weak logic, vague claims, and lack of evidence. Occasionally start your comments with the word "actually".',
     provider: "Grok",
     model: "grok-4",
     includeEvaluation: true,
@@ -38,7 +56,8 @@ const DEFAULT_PROCESSORS: Processor[] = [
   {
     id: "grammar",
     name: "Grammar Checker",
-    personality: `You are a precise grammar checker. Identify grammar, punctuation, and spelling issues in the given text. Only flag clear errors, not stylistic choices.\n\n${JSON_FORMAT_INSTRUCTIONS}`,
+    personality:
+      "You are a precise grammar checker. Identify grammar, punctuation, and spelling issues in the given text. Only flag clear errors, not stylistic choices.",
     provider: "OpenAI",
     model: "gpt-4o-mini",
     includeEvaluation: true,
@@ -47,7 +66,8 @@ const DEFAULT_PROCESSORS: Processor[] = [
   {
     id: "style",
     name: "Style Advisor",
-    personality: `You are a writing style advisor. Identify opportunities to improve clarity, conciseness, and readability. Focus on awkward phrasing, redundancy, weak verbs, and unclear sentences.\n\n${JSON_FORMAT_INSTRUCTIONS}`,
+    personality:
+      "You are a writing style advisor. Identify opportunities to improve clarity, conciseness, and readability. Focus on awkward phrasing, redundancy, weak verbs, and unclear sentences.",
     provider: "OpenAI",
     model: "gpt-4o-mini",
     includeEvaluation: true,
@@ -60,11 +80,18 @@ export const processors = createPersistentStore<Processor[]>(
   DEFAULT_PROCESSORS,
 );
 
+processors.update((list) =>
+  list.map((p) => ({
+    ...p,
+    personality: stripJsonFormatInstructions(p.personality),
+  })),
+);
+
 export function addProcessor(): Processor {
   const processor: Processor = {
     id: crypto.randomUUID(),
     name: "New Persona",
-    personality: JSON_FORMAT_INSTRUCTIONS,
+    personality: "",
     provider: "OpenAI",
     model: "gpt-4o-mini",
     includeEvaluation: true,
@@ -75,8 +102,12 @@ export function addProcessor(): Processor {
 }
 
 export function updateProcessor(updated: Processor): void {
+  const sanitized: Processor = {
+    ...updated,
+    personality: stripJsonFormatInstructions(updated.personality),
+  };
   processors.update((list) =>
-    list.map((p) => (p.id === updated.id ? updated : p)),
+    list.map((p) => (p.id === sanitized.id ? sanitized : p)),
   );
 }
 

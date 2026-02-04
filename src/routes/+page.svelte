@@ -38,6 +38,7 @@
   import {
     processors,
     addProcessor as addNewProcessor,
+    buildProcessorSystemPrompt,
     updateProcessor,
     removeProcessor,
     toggleProcessor,
@@ -281,7 +282,7 @@
         id: p.id,
         name: p.name,
         bindings: [{ provider: p.provider, model: p.model }],
-        systemPrompt: p.personality,
+        systemPrompt: buildProcessorSystemPrompt(p.personality),
         includeEvaluation: p.includeEvaluation,
       }));
   }

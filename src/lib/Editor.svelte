@@ -24,6 +24,7 @@
     registerMarkdownShortcuts,
     TRANSFORMERS,
     $convertToMarkdownString as convertToMarkdownString,
+    $convertFromMarkdownString as convertFromMarkdownString,
   } from "@lexical/markdown";
   import { ListNode, ListItemNode } from "@lexical/list";
   import { LinkNode } from "@lexical/link";
@@ -39,7 +40,7 @@
   import { comments } from "$lib/comments";
   import editorThemeClasses from "$lib/editorThemeClasses";
   import { get, writable } from "svelte/store";
-  import { loadJson, saveJson } from "$lib/storage";
+  import { loadJson, removeStorageKey, saveJson } from "$lib/storage";
   import { editorInstance } from "$lib/editorInstance";
   import DragHandle from "$lib/DragHandle.svelte";
   import {
@@ -49,6 +50,7 @@
   } from "$lib/selectionInfo";
 
   const STORAGE_KEY = "editor-state";
+  const STORAGE_MARKDOWN_KEY = "editor-markdown";
 
   const allTransformers = [...TRANSFORMERS];
 
@@ -110,6 +112,31 @@
           paragraph.append(createTextNode(line));
         }
         root.append(paragraph);
+      }
+    });
+  }
+
+  function ensureEditorRootNotEmpty() {
+    if (!editor) return;
+    editor.update(() => {
+      const root = getRoot();
+      if (root.getChildrenSize() === 0) {
+        root.append(createParagraphNode());
+      }
+    });
+  }
+
+  function applyMarkdownToEditor(markdown: string) {
+    if (!editor) return;
+    editor.update(() => {
+      const root = getRoot();
+      root.clear();
+      const trimmed = markdown.trim();
+      if (trimmed.length > 0) {
+        convertFromMarkdownString(trimmed, allTransformers, root);
+      }
+      if (root.getChildrenSize() === 0) {
+        root.append(createParagraphNode());
       }
     });
   }
@@ -202,15 +229,6 @@
       onError: (error: Error) => console.error(error),
     });
 
-    const saved = loadJson<Record<string, unknown> | null>(STORAGE_KEY, null);
-    if (saved) {
-      const parsed = editor.parseEditorState(JSON.stringify(saved));
-      editor.setEditorState(parsed);
-      const pretty = JSON.stringify(saved, null, 2);
-      editorStateJson.set(pretty);
-      lastRichStateJson = pretty;
-    }
-
     editorInstance.set(editor);
     editor.setRootElement(editorRef);
 
@@ -298,6 +316,31 @@
         },
       ),
     );
+
+    const pendingMarkdown = loadJson<string | null>(STORAGE_MARKDOWN_KEY, null);
+    if (pendingMarkdown && pendingMarkdown.trim().length > 0) {
+      applyMarkdownToEditor(pendingMarkdown);
+      removeStorageKey(STORAGE_MARKDOWN_KEY);
+    } else {
+      const saved = loadJson<Record<string, unknown> | null>(STORAGE_KEY, null);
+      if (saved) {
+        try {
+          const parsed = editor.parseEditorState(JSON.stringify(saved));
+          const isEmpty = parsed.read(() => getRoot().getChildrenSize() === 0);
+          if (isEmpty) {
+            removeStorageKey(STORAGE_KEY);
+            ensureEditorRootNotEmpty();
+          } else {
+            editor.setEditorState(parsed);
+          }
+        } catch {
+          removeStorageKey(STORAGE_KEY);
+          ensureEditorRootNotEmpty();
+        }
+      } else {
+        ensureEditorRootNotEmpty();
+      }
+    }
 
     // Also listen for selection changes via the native selectionchange event
     // to catch cases where the user clicks to collapse the selection

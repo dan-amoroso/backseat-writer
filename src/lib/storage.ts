@@ -39,6 +39,13 @@ export function saveJson<T>(key: string, value: T): void {
   localStorage.setItem(storageKey(key), JSON.stringify(value));
 }
 
+export function removeStorageKey(key: string): void {
+  if (!browser) {
+    return;
+  }
+  localStorage.removeItem(storageKey(key));
+}
+
 export function createPersistentStore<T>(
   key: string,
   fallback: T,
