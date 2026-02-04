@@ -30,6 +30,7 @@
     "@lexical/list": "^0.39.0",
     "@lexical/markdown": "^0.39.0",
     "@lexical/rich-text": "^0.39.0",
+    "@lexical/selection": "^0.39.0",
     "@lexical/utils": "^0.39.0",
     "lexical": "^0.39.0",
     "posthog-js": "^1.336.4",

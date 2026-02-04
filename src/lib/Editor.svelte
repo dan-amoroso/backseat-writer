@@ -26,7 +26,7 @@
     $convertToMarkdownString as convertToMarkdownString,
     $convertFromMarkdownString as convertFromMarkdownString,
   } from "@lexical/markdown";
-  import { ListNode, ListItemNode } from "@lexical/list";
+  import { ListNode, ListItemNode, registerList } from "@lexical/list";
   import { LinkNode } from "@lexical/link";
   import { CodeNode, CodeHighlightNode } from "@lexical/code";
   import {
@@ -235,6 +235,7 @@
     cleanup = mergeRegister(
       registerRichText(editor),
       registerHistory(editor, createEmptyHistoryState(), 300),
+      registerList(editor),
       editor.registerCommand(
         TOGGLE_TARGET_COMMAND,
         (targetId) => {

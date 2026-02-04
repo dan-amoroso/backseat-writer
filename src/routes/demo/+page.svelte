@@ -8,7 +8,9 @@
   const DEMO_MARKDOWN = `
 ## Hi, this is Dan. I have been working on my writing
 
-I aim for 1000 words per day, and building Backseat Writer has made it even more fun. It is a hobby text editor that uses AI as a soundingboard rather than producing your text. I aim to expand it to where it will handle citations and sources, suggest clarifications and audience specific reactions.
+> I aim for 1000 words per day, and building Backseat Writer has made it even more fun. It is a hobby text editor that uses AI as a soundingboard rather than producing your text. 
+
+I want to expand it to where it will handle citations and sources, suggest clarifications and audience specific reactions.
 
 For example, just for a bit of fun, the default _Personas_ you see on the left include 'HN snark' to help me predict some of the sass my posts will get on HN. What's really funny is that it often catches some useful stuff.
 
@@ -20,7 +22,7 @@ Processors don't necessarily need to be AI powered, infact I am planning to have
 
 ## How?
 
-Write text, hit "get feedback". The app is BYOK at the moment, and it runs clientside only.
+Write text, hit "get feedback" on the top right. The app is BYOK at the moment, and it runs clientside only.
 
 ## Why?
 

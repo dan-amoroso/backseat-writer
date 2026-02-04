@@ -46,6 +46,7 @@
   import type { Processor } from "$lib/processors";
   import ProcessorsSidebar from "$lib/ProcessorsSidebar.svelte";
   import ProcessorModal from "$lib/ProcessorModal.svelte";
+  import FormattingToolbar from "$lib/FormattingToolbar.svelte";
   import { applyPipelineResults } from "$lib/applyPipelineResults";
   import {
     TOGGLE_TARGET_COMMAND,
@@ -1146,6 +1147,7 @@
       on:mouseout={handleEditorHoverOut}
     >
       <div class="editor-pane">
+        <FormattingToolbar />
         <Editor bind:this={editorComponent} bind:editorStateJson />
       </div>
       <aside class="comments-pane">
