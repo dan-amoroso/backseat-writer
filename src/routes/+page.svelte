@@ -586,6 +586,7 @@
     </div>
     <BottomToolbar
       {wordCount}
+      processors={$processors}
       {feedbackLoading}
       {pipelineResults}
       {feedbackApplyResult}

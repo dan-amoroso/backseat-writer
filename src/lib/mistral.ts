@@ -86,6 +86,20 @@ export function chatCompletion(
   );
 }
 
+// ── List models ──
+
+export async function listModels(apiKey: string): Promise<string[]> {
+  const res = await fetch(`${BASE_URL}/models`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!res.ok) {
+    throw new MistralError(res.status, `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  const models: { id: string; created: number }[] = data.data ?? [];
+  return models.sort((a, b) => b.created - a.created).map((m) => m.id);
+}
+
 // ── Key validation ──
 
 export async function validateKey(

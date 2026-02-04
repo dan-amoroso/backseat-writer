@@ -65,6 +65,22 @@ export async function generateContent(
   return res.json();
 }
 
+// ── List models ──
+
+export async function listModels(apiKey: string): Promise<string[]> {
+  const res = await fetch(`${BASE_URL}/models?key=${apiKey}`);
+  if (!res.ok) {
+    throw new GeminiError(res.status, `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  const models: { name: string; supportedGenerationMethods?: string[] }[] =
+    data.models ?? [];
+  return models
+    .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
+    .map((m) => m.name.replace("models/", ""))
+    .sort();
+}
+
 // ── Key validation ──
 
 export async function validateKey(

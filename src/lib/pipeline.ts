@@ -1,6 +1,7 @@
 import { chatCompletion as openAIChatCompletion } from "$lib/openai";
 import { chatCompletion as perplexityChatCompletion } from "$lib/perplexity";
 import { generateContent as geminiGenerateContent } from "$lib/gemini";
+import { chatCompletion as mistralChatCompletion } from "$lib/mistral";
 
 // ── Types ──
 
@@ -18,7 +19,7 @@ export interface ProcessorResult {
   error?: string;
 }
 
-export type Provider = "OpenAI" | "Perplexity" | "Gemini";
+export type Provider = "OpenAI" | "Perplexity" | "Gemini" | "Mistral";
 
 export interface ProviderBinding {
   provider: Provider;
@@ -203,6 +204,14 @@ async function callProvider(
     return result.choices?.[0]?.message?.content || "";
   }
 
+  if (binding.provider === "Mistral") {
+    const result = await mistralChatCompletion(key, {
+      model: binding.model,
+      messages,
+    });
+    return result.choices?.[0]?.message?.content || "";
+  }
+
   const result = await perplexityChatCompletion(key, {
     model: binding.model,
     messages,
@@ -267,12 +276,14 @@ export async function runPipeline(
   writingType: string,
   apiKeys: Record<string, string>,
   verifiedKeys: Record<string, boolean>,
+  processorDefs?: ProcessorDefinition[],
 ): Promise<PipelineResult> {
+  const defs = processorDefs ?? PROCESSORS;
   const resolved: {
     processor: ProcessorDefinition;
     binding: ProviderBinding;
   }[] = [];
-  for (const p of PROCESSORS) {
+  for (const p of defs) {
     const binding = resolveBinding(p.bindings, apiKeys, verifiedKeys);
     if (binding) {
       resolved.push({ processor: p, binding });

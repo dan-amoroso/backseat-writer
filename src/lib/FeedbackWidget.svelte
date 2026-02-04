@@ -1,27 +1,31 @@
 <script lang="ts">
-  import type { PipelineResult, ApplyResult } from "$lib/pipeline";
+  import type { ProcessorResult, ProcessorComment } from "$lib/pipeline";
 
+  export let name: string = "AI";
   export let loading: boolean = false;
-  export let results: PipelineResult | null = null;
-  export let applyResult: ApplyResult | null = null;
+  export let result: ProcessorResult | null = null;
+  export let failedComments: ProcessorComment[] = [];
   export let error: string = "";
 
   let open = false;
 
-  $: hasContent = loading || error || results;
-  $: if (hasContent) open = true;
+  $: hasContent = loading || error || result;
+
+  $: commentCount = result?.comments.length ?? 0;
+  $: hasError = !!result?.error || !!error;
 </script>
 
 <div class="feedback-widget">
   <button
     class="feedback-toggle"
     class:feedback-toggle-active={open}
+    class:feedback-toggle-error={hasError && !loading}
     on:click={() => (open = !open)}
-    aria-label="Toggle AI feedback"
+    aria-label="Toggle {name} feedback"
   >
     <svg
-      width="16"
-      height="16"
+      width="14"
+      height="14"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -31,7 +35,7 @@
     >
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
-    <span class="feedback-toggle-label">AI</span>
+    <span class="feedback-toggle-label">{name}</span>
     {#if loading}
       <svg
         class="feedback-spinner"
@@ -54,11 +58,13 @@
           stroke-linecap="round"
         />
       </svg>
+    {:else if commentCount > 0}
+      <span class="feedback-toggle-count">{commentCount}</span>
     {/if}
   </button>
   {#if open && hasContent}
     <div class="feedback-panel">
-      <div class="feedback-panel-header">AI Feedback</div>
+      <div class="feedback-panel-header">{name}</div>
       <div class="feedback-panel-content">
         {#if loading}
           <div class="feedback-loading">
@@ -87,50 +93,42 @@
           </div>
         {:else if error}
           <div class="feedback-error">{error}</div>
-        {:else if results}
-          {#if applyResult}
-            <div class="feedback-summary">
-              {applyResult.commentsCreated} comments applied{#if applyResult.commentsFailed > 0},
-                {applyResult.commentsFailed} could not be matched to text{/if}
-            </div>
-            {#if applyResult.failedComments.length > 0}
-              <details class="feedback-unmatched">
-                <summary class="feedback-unmatched-summary">
-                  View unmatched comments
-                </summary>
-                <div class="feedback-unmatched-list">
-                  {#each applyResult.failedComments as comment}
-                    <article class="feedback-unmatched-item">
-                      <header class="feedback-unmatched-header">
-                        <span class="feedback-unmatched-author"
-                          >{comment.author}</span
-                        >
-                      </header>
-                      <p class="feedback-unmatched-target">
-                        {comment.targetText}
-                      </p>
-                      <p class="feedback-unmatched-body">{comment.body}</p>
-                    </article>
-                  {/each}
-                </div>
-              </details>
-            {/if}
+        {:else if result}
+          {#if result.error}
+            <div class="feedback-error">{result.error}</div>
           {/if}
-          {#each results.results as result}
-            <section class="feedback-processor-section">
-              <h3 class="feedback-processor-name">{result.processorName}</h3>
-              {#if result.error}
-                <div class="feedback-error">{result.error}</div>
-              {/if}
-              {#if result.evaluation}
-                <pre class="feedback-text">{result.evaluation}</pre>
-              {/if}
-            </section>
-          {/each}
-          {#if results.results.length === 0}
-            <div class="feedback-error">
-              No processors ran. Configure and validate an API key in Settings.
+          {#if result.evaluation}
+            <pre class="feedback-text">{result.evaluation}</pre>
+          {/if}
+          {#if result.comments.length > 0}
+            <div class="feedback-summary">
+              {result.comments.length} comment{result.comments.length === 1
+                ? ""
+                : "s"} applied
             </div>
+          {/if}
+          {#if failedComments.length > 0}
+            <details class="feedback-unmatched">
+              <summary class="feedback-unmatched-summary">
+                {failedComments.length} unmatched comment{failedComments.length ===
+                1
+                  ? ""
+                  : "s"}
+              </summary>
+              <div class="feedback-unmatched-list">
+                {#each failedComments as comment}
+                  <article class="feedback-unmatched-item">
+                    <p class="feedback-unmatched-target">
+                      {comment.targetText}
+                    </p>
+                    <p class="feedback-unmatched-body">{comment.body}</p>
+                  </article>
+                {/each}
+              </div>
+            </details>
+          {/if}
+          {#if !result.error && !result.evaluation && result.comments.length === 0}
+            <div class="feedback-summary">No issues found.</div>
           {/if}
         {/if}
       </div>

@@ -82,6 +82,26 @@ export function chatCompletion(
   );
 }
 
+export async function listModels(apiKey: string): Promise<string[]> {
+  const res = await fetch(`${BASE_URL}/models`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+  if (!res.ok) {
+    throw new OpenAIError(res.status, `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  const models: { id: string; created: number }[] = data.data ?? [];
+  return models
+    .filter(
+      (m) =>
+        m.id.startsWith("gpt-") ||
+        m.id.startsWith("o") ||
+        m.id.startsWith("chatgpt-"),
+    )
+    .sort((a, b) => b.created - a.created)
+    .map((m) => m.id);
+}
+
 export async function validateKey(
   apiKey: string,
 ): Promise<{ valid: true } | { valid: false; error: string }> {

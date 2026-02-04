@@ -377,12 +377,107 @@
 /* ── App shell ── */
 
 main {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 20px 24px 0;
   height: 100vh;
   display: flex;
+  flex-direction: row;
+  gap: 0;
+}
+
+/* ── Processors sidebar ── */
+
+.processors-sidebar {
+  width: 72px;
+  flex-shrink: 0;
+  display: flex;
   flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 8px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  margin-right: 16px;
+  overflow-y: auto;
+}
+
+.processors-sidebar-tiles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.processor-tile {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  color: #a09888;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  transition:
+    background 0.15s ease-out,
+    border-color 0.15s ease-out,
+    color 0.15s ease-out;
+}
+
+.processor-tile:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #c8c4be;
+}
+
+.processor-tile-name {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.processor-tile-model {
+  font-size: 8px;
+  color: #5a5248;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.processor-add-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: #5a5248;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    color 0.15s ease-out,
+    border-color 0.15s ease-out,
+    background 0.15s ease-out;
+}
+
+.processor-add-btn:hover {
+  color: #d4a054;
+  border-color: rgba(212, 160, 84, 0.3);
+  background: rgba(212, 160, 84, 0.05);
 }
 
 h1 {
@@ -491,6 +586,7 @@ select:focus {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  min-width: 0;
 }
 
 .editor-content {
@@ -613,6 +709,23 @@ select:focus {
 
 .feedback-toggle-label {
   line-height: 1;
+}
+
+.feedback-toggle-count {
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 8px;
+  background: rgba(212, 160, 84, 0.2);
+  color: #d4a054;
+}
+
+.feedback-toggle-error {
+  color: #a83232;
+  border-color: rgba(160, 50, 50, 0.2);
 }
 
 .feedback-panel {
@@ -1459,4 +1572,162 @@ select:focus {
   color: #c8c4be;
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ── Processor modal ── */
+
+.processor-modal {
+  background: #1c1b19;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  width: 480px;
+  max-width: 92vw;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  animation: modalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.processor-modal-field {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.processor-modal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: #706860;
+}
+
+.processor-modal-input {
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  color: #c8c4be;
+  font-size: 13px;
+  transition: border-color 0.15s ease-out;
+}
+
+.processor-modal-input::placeholder {
+  color: #363330;
+}
+
+.processor-modal-input:focus {
+  outline: none;
+  border-color: rgba(212, 160, 84, 0.3);
+}
+
+.processor-modal-textarea {
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  color: #c8c4be;
+  font-size: 12px;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", monospace;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.15s ease-out;
+}
+
+.processor-modal-textarea::placeholder {
+  color: #363330;
+}
+
+.processor-modal-textarea:focus {
+  outline: none;
+  border-color: rgba(212, 160, 84, 0.3);
+}
+
+.processor-modal-select {
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  color: #c8c4be;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s ease-out;
+}
+
+.processor-modal-select:focus {
+  outline: none;
+  border-color: rgba(212, 160, 84, 0.3);
+}
+
+.processor-modal-models-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #706860;
+  padding: 7px 0;
+}
+
+.processor-modal-models-error {
+  font-size: 11px;
+  color: #a83232;
+  margin-bottom: 4px;
+}
+
+.processor-modal-checkbox-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #a09888;
+  cursor: pointer;
+}
+
+.processor-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.processor-modal-delete {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(160, 50, 50, 0.3);
+  background: rgba(160, 50, 50, 0.08);
+  color: #a83232;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+
+.processor-modal-delete:hover {
+  background: rgba(160, 50, 50, 0.15);
+  border-color: rgba(160, 50, 50, 0.5);
+}
+
+.processor-modal-save {
+  padding: 6px 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(212, 160, 84, 0.3);
+  background: rgba(212, 160, 84, 0.12);
+  color: #d4a054;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+
+.processor-modal-save:hover {
+  background: rgba(212, 160, 84, 0.2);
+  border-color: rgba(212, 160, 84, 0.5);
 }
