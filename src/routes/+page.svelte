@@ -84,6 +84,7 @@
   let shareDialogOpen = false;
   let shareDialogResolve: ((value: boolean) => void) | null = null;
   let helpOpen = false;
+  let byokDialogOpen = false;
 
   $: if (browser) {
     document.body.classList.toggle("help-open", helpOpen);
@@ -191,6 +192,22 @@
   function onHelpKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
       helpOpen = false;
+    }
+  }
+
+  function closeByokDialog() {
+    byokDialogOpen = false;
+  }
+
+  function onByokDialogBackdropClick(event: MouseEvent) {
+    if (event.target === event.currentTarget) {
+      closeByokDialog();
+    }
+  }
+
+  function onByokDialogKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      closeByokDialog();
     }
   }
 
@@ -330,14 +347,22 @@
   }
 
   async function getFeedback() {
+    const current = get(settings);
+    const apiKeys = current.apiKeys || {};
+    const hasAnyApiKey = Object.values(apiKeys).some(
+      (value) => typeof value === "string" && value.trim().length > 0,
+    );
+    if (!hasAnyApiKey) {
+      byokDialogOpen = true;
+      return;
+    }
+
     feedbackLoading = true;
     feedbackError = "";
     pipelineResults = null;
     feedbackApplyResult = null;
 
-    const current = get(settings);
     const verifiedKeys = current.verifiedKeys || {};
-    const apiKeys = current.apiKeys || {};
 
     let editorText = "";
     try {
@@ -1413,6 +1438,68 @@
           type="button"
         >
           Yes, include keys
+        </button>
+      </footer>
+    </div>
+  </div>
+{/if}
+
+{#if byokDialogOpen}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+  <div
+    class="settings-backdrop"
+    on:click={onByokDialogBackdropClick}
+    on:keydown={onByokDialogKeydown}
+  >
+    <div class="byok-dialog" role="dialog" aria-label="Bring your own key">
+      <div class="byok-dialog-header">
+        <div class="byok-dialog-title">Bring your own key (BYOK)</div>
+        <button
+          class="byok-dialog-close"
+          on:click={closeByokDialog}
+          aria-label="Close"
+          type="button"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          >
+            <path d="M1 1l12 12M13 1L1 13" />
+          </svg>
+        </button>
+      </div>
+      <div class="byok-dialog-body">
+        <p class="byok-dialog-text">
+          BackseatWriter is currently BYOK: to keep it free and private, you
+          provide your own API key.
+        </p>
+        <p class="byok-dialog-subtext">
+          Your key is stored locally in your browser and requests go directly to
+          the provider.
+        </p>
+      </div>
+      <footer class="byok-dialog-footer">
+        <button
+          class="confirm-dialog-cancel"
+          on:click={closeByokDialog}
+          type="button"
+        >
+          Not now
+        </button>
+        <button
+          class="byok-dialog-confirm"
+          on:click={() => {
+            settingsOpen = true;
+            closeByokDialog();
+          }}
+          type="button"
+        >
+          Open Settings
         </button>
       </footer>
     </div>
