@@ -2482,6 +2482,38 @@ select:focus {
   border-color: rgba(212, 160, 84, 0.5);
 }
 
+/* ── Clear comments button (header) ── */
+
+.clear-comments-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: #4a4540;
+  cursor: pointer;
+  transition:
+    color 0.15s ease-out,
+    background 0.15s ease-out;
+}
+
+.clear-comments-btn:hover {
+  color: #a83232;
+  background: rgba(160, 50, 50, 0.08);
+}
+
+.clear-comments-btn:focus-visible {
+  outline: none;
+  border-color: rgba(160, 50, 50, 0.4);
+}
+
+.clear-comments-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Inline feedback ── */
 
 .feedback-inline {
@@ -2924,6 +2956,7 @@ select:focus {
   .header-left,
   .header-controls label,
   .header-controls .settings-btn,
+  .header-controls .clear-comments-btn,
   .comments-pane,
   .formatting-toolbar,
   .bottom-toolbar,

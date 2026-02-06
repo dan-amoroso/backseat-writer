@@ -5,18 +5,25 @@
     $getRoot as getRoot,
     type LexicalEditor,
   } from "lexical";
+  import {
+    $isListNode as isListNode,
+    $isListItemNode as isListItemNode,
+  } from "@lexical/list";
 
   export let editor: LexicalEditor;
   export let editorRootEl: HTMLDivElement;
 
   interface BlockHandle {
     key: string;
+    groupKey: string;
     top: number;
+    left: number;
   }
 
   let handles: BlockHandle[] = [];
   let isDragging = false;
   let dragSourceKey: string | null = null;
+  let dragGroupKey: string | null = null;
   let dropTargetKey: string | null = null;
   let dropBefore = true;
   let indicatorVisible = false;
@@ -29,16 +36,56 @@
 
     editor.getEditorState().read(() => {
       const root = getRoot();
+      const rootKey = root.getKey();
       const children = root.getChildren();
-      for (const child of children) {
-        const el = editor.getElementByKey(child.getKey());
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          next.push({
-            key: child.getKey(),
-            top: rect.top - containerRect.top,
-          });
+
+      const pushHandleForKey = (key: string, groupKey: string) => {
+        const el = editor.getElementByKey(key);
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        next.push({
+          key,
+          groupKey,
+          top: rect.top - containerRect.top,
+          left: 8,
+        });
+      };
+
+      const pushListItemHandles = (listNode: import("lexical").LexicalNode) => {
+        if (!isListNode(listNode)) return;
+        const listKey = listNode.getKey();
+        const items = listNode.getChildren().filter(isListItemNode);
+        for (const item of items) {
+          pushHandleForKey(item.getKey(), listKey);
+
+          // Nested lists live inside list items; recurse to pick up their items too.
+          const stack = [...item.getChildren()];
+          while (stack.length > 0) {
+            const node = stack.pop();
+            if (!node) continue;
+            if (isListNode(node)) {
+              pushListItemHandles(node);
+              continue;
+            }
+            if (
+              "getChildren" in node &&
+              typeof node.getChildren === "function"
+            ) {
+              stack.push(
+                ...(node.getChildren() as import("lexical").LexicalNode[]),
+              );
+            }
+          }
         }
+      };
+
+      for (const child of children) {
+        if (isListNode(child)) {
+          // Lists are treated as a collection of independently draggable items.
+          pushListItemHandles(child);
+          continue;
+        }
+        pushHandleForKey(child.getKey(), rootKey);
       }
     });
 
@@ -49,6 +96,7 @@
     e.preventDefault();
     isDragging = true;
     dragSourceKey = handle.key;
+    dragGroupKey = handle.groupKey;
 
     const el = editor.getElementByKey(handle.key);
     if (el) el.classList.add("drag-source");
@@ -58,7 +106,7 @@
   }
 
   function onDragMove(e: PointerEvent) {
-    if (!isDragging || !editorRootEl.parentElement) return;
+    if (!isDragging || !editorRootEl.parentElement || !dragGroupKey) return;
     const containerRect = editorRootEl.parentElement.getBoundingClientRect();
 
     let closestDist = Infinity;
@@ -66,30 +114,28 @@
     let before = true;
     let closestY = 0;
 
-    editor.getEditorState().read(() => {
-      const root = getRoot();
-      const children = root.getChildren();
-      for (const child of children) {
-        const el = editor.getElementByKey(child.getKey());
-        if (!el) continue;
-        const rect = el.getBoundingClientRect();
-        const topDist = Math.abs(e.clientY - rect.top);
-        const botDist = Math.abs(e.clientY - rect.bottom);
+    const candidates = handles.filter((h) => h.groupKey === dragGroupKey);
+    for (const candidate of candidates) {
+      if (candidate.key === dragSourceKey) continue;
+      const el = editor.getElementByKey(candidate.key);
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      const topDist = Math.abs(e.clientY - rect.top);
+      const botDist = Math.abs(e.clientY - rect.bottom);
 
-        if (topDist < closestDist) {
-          closestDist = topDist;
-          closestY = rect.top - containerRect.top;
-          closestKey = child.getKey();
-          before = true;
-        }
-        if (botDist < closestDist) {
-          closestDist = botDist;
-          closestY = rect.bottom - containerRect.top;
-          closestKey = child.getKey();
-          before = false;
-        }
+      if (topDist < closestDist) {
+        closestDist = topDist;
+        closestY = rect.top - containerRect.top;
+        closestKey = candidate.key;
+        before = true;
       }
-    });
+      if (botDist < closestDist) {
+        closestDist = botDist;
+        closestY = rect.bottom - containerRect.top;
+        closestKey = candidate.key;
+        before = false;
+      }
+    }
 
     if (closestKey && closestKey !== dragSourceKey) {
       dropTargetKey = closestKey;
@@ -132,6 +178,7 @@
 
     isDragging = false;
     dragSourceKey = null;
+    dragGroupKey = null;
     dropTargetKey = null;
     indicatorVisible = false;
   }
@@ -166,7 +213,7 @@
   <div
     class="drag-handle"
     class:drag-handle-dragging={isDragging && dragSourceKey === handle.key}
-    style="top: {handle.top}px;"
+    style="top: {handle.top}px; left: {handle.left}px;"
     on:pointerdown={(e) => onPointerDown(e, handle)}
     role="button"
     tabindex="-1"

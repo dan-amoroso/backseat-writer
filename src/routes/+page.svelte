@@ -6,7 +6,10 @@
     $getRoot as getRoot,
     $createParagraphNode as createParagraphNode,
   } from "lexical";
-  import { $removeTargetById as removeTargetById } from "$lib/nodes/TargetNode";
+  import {
+    $removeTargetById as removeTargetById,
+    $removeAllTargets as removeAllTargets,
+  } from "$lib/nodes/TargetNode";
   import Editor from "$lib/Editor.svelte";
   import { editorInstance } from "$lib/editorInstance";
   import FileMenu from "$lib/FileMenu.svelte";
@@ -84,6 +87,38 @@
 
   $: if (browser) {
     document.body.classList.toggle("help-open", helpOpen);
+  }
+
+  function deleteAllCommentsAndTargets() {
+    deleteAllComments();
+
+    const editor = get(editorInstance);
+    if (editor) {
+      editor.update(() => {
+        removeAllTargets();
+      });
+      return;
+    }
+
+    if (!editor) {
+      const unsubscribe = editorInstance.subscribe((nextEditor) => {
+        if (!nextEditor) return;
+        nextEditor.update(() => {
+          removeAllTargets();
+        });
+        unsubscribe();
+      });
+    }
+  }
+
+  function handleClearAllComments() {
+    if (!browser) return;
+    if (!confirm("Clear all comments and targets? This can’t be undone.")) {
+      return;
+    }
+    clearActiveTargets();
+    clearHoverTargets();
+    deleteAllCommentsAndTargets();
   }
 
   function decodeBase64Url(value: string): string | null {
@@ -244,6 +279,8 @@
         }
       }
     } else if (editorInitialized) {
+      // If a shared link doesn't include comments, clear local comments without
+      // mutating the loaded editor content (which may contain targets).
       deleteAllComments();
     }
 
@@ -318,7 +355,7 @@
       return;
     }
 
-    deleteAllComments();
+    deleteAllCommentsAndTargets();
 
     try {
       const result = await runPipeline(
@@ -434,7 +471,7 @@
       root.clear();
       root.append(createParagraphNode());
     });
-    deleteAllComments();
+    deleteAllCommentsAndTargets();
     selectedWritingType = writingTypes[0];
     setSetting("writingType", writingTypes[0]);
   }
@@ -964,6 +1001,31 @@
               d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
             />
             <circle cx="12" cy="12" r="3" />
+          </svg>
+        </button>
+        <button
+          class="clear-comments-btn"
+          on:click={handleClearAllComments}
+          aria-label="Clear all comments and targets"
+          title="Clear all comments and targets"
+          type="button"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 6h18" />
+            <path d="M8 6V4h8v2" />
+            <path d="M6 6l1 16h10l1-16" />
+            <path d="M10 11v6" />
+            <path d="M14 11v6" />
           </svg>
         </button>
         <button

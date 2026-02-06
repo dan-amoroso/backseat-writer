@@ -374,3 +374,29 @@ export function $removeTargetById(targetId: string): void {
   };
   walk(root);
 }
+
+export function $removeAllTargets(): void {
+  const root = $getRoot();
+  const walk = (node: LexicalNode) => {
+    if ($isTargetNode(node)) {
+      const children = [...node.getChildren()];
+      for (const child of children) {
+        node.insertBefore(child);
+      }
+      node.remove();
+      for (const child of children) {
+        if (child.isAttached()) {
+          walk(child);
+        }
+      }
+      return;
+    }
+    if ($isElementNode(node)) {
+      const children = [...node.getChildren()];
+      for (const child of children) {
+        walk(child);
+      }
+    }
+  };
+  walk(root);
+}
